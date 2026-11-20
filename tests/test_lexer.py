@@ -1,0 +1,285 @@
+import unittest
+
+from src.zen.lexer import Lexer, LexerError, TokenType
+
+
+class LexerTests(unittest.TestCase):
+
+    def test_empty_source(self):
+        tokens = Lexer("").tokenize()
+        self.assertEqual(tokens[0].type, TokenType.EOF)
+
+    def test_keywords(self):
+        tokens = Lexer(
+            "let const fn if else while true false null return"
+        ).tokenize()
+
+        expected = [
+            TokenType.LET, TokenType.CONST, TokenType.FN,
+            TokenType.IF, TokenType.ELSE, TokenType.WHILE,
+            TokenType.TRUE, TokenType.FALSE, TokenType.NULL,
+            TokenType.RETURN, TokenType.EOF,
+        ]
+
+        self.assertEqual([t.type for t in tokens], expected)
+
+    def test_identifier(self):
+        token = Lexer("user_name42").tokenize()[0]
+
+        self.assertEqual(token.type, TokenType.IDENTIFIER)
+        self.assertEqual(token.literal, "user_name42")
+
+    def test_numbers(self):
+        tokens = Lexer("0 42 3.14").tokenize()
+
+        self.assertEqual(
+            [t.type for t in tokens[:-1]],
+            [
+                TokenType.INTEGER,
+                TokenType.INTEGER,
+                TokenType.FLOAT,
+            ],
+        )
+
+        self.assertEqual(
+            [t.literal for t in tokens[:-1]],
+            [0, 42, 3.14],
+        )
+
+    def test_strings(self):
+        tokens = Lexer(r"""'hello' "line\nnext" "quote: \"" """).tokenize()
+
+        self.assertEqual(
+            [t.literal for t in tokens[:-1]],
+            ["hello", "line\nnext", 'quote: "'],
+        )
+
+    def test_line_comment_preserves_newline(self):
+        tokens = Lexer("let x = 1 // comment\nprint(x)").tokenize()
+
+        self.assertIn(
+            TokenType.NEWLINE,
+            [t.type for t in tokens],
+        )
+
+    def test_block_comment_preserves_newline(self):
+        tokens = Lexer("a/* comment\ncontinued */b").tokenize()
+
+        self.assertEqual(
+            [t.type for t in tokens],
+            [
+                TokenType.IDENTIFIER,
+                TokenType.NEWLINE,
+                TokenType.IDENTIFIER,
+                TokenType.EOF,
+            ],
+        )
+
+    def test_operators(self):
+        source = "+ - * / % = == != < <= > >= ! && ||"
+        tokens = Lexer(source).tokenize()
+
+        expected = [
+            TokenType.PLUS, TokenType.MINUS,
+            TokenType.STAR, TokenType.SLASH,
+            TokenType.PERCENT, TokenType.ASSIGN,
+            TokenType.EQUAL, TokenType.NOT_EQUAL,
+            TokenType.LESS, TokenType.LESS_EQUAL,
+            TokenType.GREATER, TokenType.GREATER_EQUAL,
+            TokenType.BANG, TokenType.AND, TokenType.OR,
+            TokenType.EOF,
+        ]
+
+        self.assertEqual([t.type for t in tokens], expected)
+
+    def test_punctuation(self):
+        source = "() {} [] , : ;"
+        tokens = Lexer(source).tokenize()
+
+        expected = [
+            TokenType.LEFT_PAREN, TokenType.RIGHT_PAREN,
+            TokenType.LEFT_BRACE, TokenType.RIGHT_BRACE,
+            TokenType.LEFT_BRACKET, TokenType.RIGHT_BRACKET,
+            TokenType.COMMA, TokenType.COLON,
+            TokenType.SEMICOLON, TokenType.EOF,
+        ]
+
+        self.assertEqual([t.type for t in tokens], expected)
+
+    def test_illegal_character_location(self):
+        with self.assertRaises(LexerError) as context:
+            Lexer("let x = 1\n@").tokenize()
+
+        self.assertEqual(context.exception.line, 2)
+        self.assertEqual(context.exception.column, 1)
+
+    def test_unterminated_block_comment(self):
+        with self.assertRaises(LexerError):
+            Lexer("/* never closed").tokenize()
+
+    def test_unterminated_string(self):
+        with self.assertRaises(LexerError):
+            Lexer('"never closed').tokenize()
+
+    def test_unknown_escape(self):
+        with self.assertRaises(LexerError):
+            Lexer(r'"bad\q"').tokenize()
+
+    def test_single_ampersand_rejected(self):
+        with self.assertRaises(LexerError):
+            Lexer("a & b").tokenize()
+
+    def test_token_location_after_newline(self):
+        tokens = Lexer("\n  let").tokenize()
+        token = next(t for t in tokens if t.type == TokenType.LET)
+
+        self.assertEqual(token.line, 2)
+        self.assertEqual(token.column, 3)
+
+
+
+    def test_integer_1024_digits_accepted(self):
+        source = "9" * 1024
+        token = Lexer(source).tokenize()[0]
+
+        self.assertEqual(token.type, TokenType.INTEGER)
+        self.assertEqual(len(token.lexeme), 1024)
+
+    def test_integer_1025_digits_rejected(self):
+        source = "9" * 1025
+
+        with self.assertRaises(LexerError):
+            Lexer(source).tokenize()
+
+    def test_float_1024_digits_accepted(self):
+        source = "1." + "2" * 1023
+        token = Lexer(source).tokenize()[0]
+
+        self.assertEqual(token.type, TokenType.FLOAT)
+        self.assertTrue(token.literal < float("inf"))
+
+    def test_float_1025_digits_rejected(self):
+        source = "1." + "2" * 1024
+
+        with self.assertRaises(LexerError):
+            Lexer(source).tokenize()
+
+    def test_non_finite_float_rejected(self):
+        source = "9" * 309 + ".0"
+
+        with self.assertRaises(LexerError) as context:
+            Lexer(source).tokenize()
+
+        self.assertIn("finite", context.exception.message)
+
+    def test_unknown_escape_points_to_backslash(self):
+        source = '"abc\\\n'
+
+        with self.assertRaises(LexerError) as context:
+            Lexer(source).tokenize()
+
+        self.assertEqual(context.exception.line, 1)
+        self.assertEqual(context.exception.column, 5)
+
+    def test_tokenize_can_be_called_repeatedly(self):
+        lexer = Lexer("let answer = 42")
+
+        first = lexer.tokenize()
+        second = lexer.tokenize()
+
+        self.assertEqual(first, second)
+        self.assertEqual(
+            sum(token.type == TokenType.EOF for token in second),
+            1,
+        )
+
+    def test_numeric_suffixes_rejected(self):
+        for source in ("123abc", "123_foo", "1.2ms", "123true"):
+            with self.subTest(source=source):
+                with self.assertRaises(LexerError):
+                    Lexer(source).tokenize()
+
+    def test_nul_character_rejected(self):
+        with self.assertRaises(LexerError):
+            Lexer("abc\x00def").tokenize()
+
+
+
+    def test_lf_newline_position_and_lexeme(self):
+        tokens = Lexer("a\nb").tokenize()
+        self.assertEqual(tokens[1].lexeme, "\n")
+        self.assertEqual((tokens[1].line, tokens[1].column), (1, 2))
+        self.assertEqual((tokens[2].line, tokens[2].column), (2, 1))
+
+    def test_crlf_is_one_newline(self):
+        tokens = Lexer("a\r\nb").tokenize()
+        self.assertEqual(tokens[1].type, TokenType.NEWLINE)
+        self.assertEqual(tokens[1].lexeme, "\r\n")
+        self.assertEqual((tokens[2].line, tokens[2].column), (2, 1))
+
+    def test_cr_only_is_one_newline(self):
+        tokens = Lexer("a\rb").tokenize()
+        self.assertEqual(tokens[1].type, TokenType.NEWLINE)
+        self.assertEqual(tokens[1].lexeme, "\r")
+        self.assertEqual((tokens[2].line, tokens[2].column), (2, 1))
+
+    def test_mixed_newline_styles(self):
+        tokens = Lexer("a\r\nb\rc\nd").tokenize()
+        newlines = [t for t in tokens if t.type == TokenType.NEWLINE]
+        self.assertEqual([t.lexeme for t in newlines], ["\r\n", "\r", "\n"])
+        self.assertEqual([(t.line, t.column) for t in newlines],
+                         [(1, 2), (2, 2), (3, 2)])
+        self.assertEqual((tokens[-1].line, tokens[-1].column), (4, 2))
+
+    def test_tab_counts_as_one_column(self):
+        token = Lexer("\tlet").tokenize()[0]
+        self.assertEqual((token.line, token.column), (1, 2))
+
+    def test_unicode_codepoint_counts_as_one_column(self):
+        tokens = Lexer('"😀" x').tokenize()
+        identifier = next(t for t in tokens if t.type == TokenType.IDENTIFIER)
+        self.assertEqual((identifier.line, identifier.column), (1, 5))
+
+    def test_line_comment_preserves_cr_newline(self):
+        tokens = Lexer("a // comment\rb").tokenize()
+        newline = next(t for t in tokens if t.type == TokenType.NEWLINE)
+        self.assertEqual(newline.lexeme, "\r")
+        self.assertEqual((tokens[-2].line, tokens[-2].column), (2, 1))
+
+    def test_block_comment_preserves_crlf_and_cr(self):
+        tokens = Lexer("a/*x\r\ny\rz*/b").tokenize()
+        newlines = [t for t in tokens if t.type == TokenType.NEWLINE]
+        self.assertEqual([t.lexeme for t in newlines], ["\r\n", "\r"])
+        self.assertEqual([(t.line, t.column) for t in newlines],
+                         [(1, 5), (2, 2)])
+        self.assertEqual((tokens[-2].line, tokens[-2].column), (3, 4))
+
+    def test_escaped_newline_is_not_physical_newline(self):
+        tokens = Lexer(r'"first\nsecond"').tokenize()
+        self.assertEqual(tokens[0].type, TokenType.STRING)
+        self.assertEqual(tokens[0].literal, "first\nsecond")
+
+    def test_physical_newline_inside_string_is_rejected(self):
+        for newline in ("\n", "\r\n", "\r"):
+            with self.subTest(newline=repr(newline)):
+                with self.assertRaises(LexerError):
+                    Lexer('"first' + newline + 'second"').tokenize()
+
+    def test_error_location_after_crlf(self):
+        with self.assertRaises(LexerError) as context:
+            Lexer("a\r\n@").tokenize()
+        self.assertEqual((context.exception.line, context.exception.column), (2, 1))
+
+    def test_eof_location_after_newline(self):
+        for newline in ("\n", "\r\n", "\r"):
+            with self.subTest(newline=repr(newline)):
+                eof = Lexer("a" + newline).tokenize()[-1]
+                self.assertEqual((eof.line, eof.column), (2, 1))
+
+    def test_eof_location_without_newline(self):
+        eof = Lexer("abc").tokenize()[-1]
+        self.assertEqual((eof.line, eof.column), (1, 4))
+
+
+if __name__ == "__main__":
+    unittest.main()
