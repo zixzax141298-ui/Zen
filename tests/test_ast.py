@@ -52,6 +52,17 @@ class SourceSpanTests(unittest.TestCase):
         with self.assertRaises(TypeError):
             SourceSpan(1, 1, 1, 2.5)
 
+    def test_source_positions_compare_lexicographically(self):
+        from zen.ast import SourcePosition
+        self.assertLess(SourcePosition(1, 9), SourcePosition(2, 1))
+        self.assertLess(SourcePosition(2, 1), SourcePosition(2, 2))
+
+    def test_span_contains_half_open_child(self):
+        parent = span(1, 1, 2, 1)
+        child = span(1, 2, 2, 1)
+        self.assertTrue(parent.contains(child))
+        self.assertFalse(child.contains(parent))
+
     def test_span_is_immutable(self):
         location = span()
         with self.assertRaises(FrozenInstanceError):
@@ -75,9 +86,9 @@ class AstNodeTests(unittest.TestCase):
             AssignExpr(span(), LiteralExpr(span(), 1), LiteralExpr(span(), 2))
 
     def test_call_arguments_are_immutable_tuple(self):
-        callee = IdentifierExpr(span(), "sum")
-        argument = LiteralExpr(span(), 1)
-        call = CallExpr(span(), callee, [argument])
+        callee = IdentifierExpr(span(1, 1, 1, 2), "sum")
+        argument = LiteralExpr(span(1, 3, 1, 4), 1)
+        call = CallExpr(span(1, 1, 1, 4), callee, [argument])
         self.assertEqual(call.arguments, (argument,))
         self.assertIsInstance(call.arguments, tuple)
 

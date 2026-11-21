@@ -20,7 +20,7 @@ from .nodes import (
     VarDecl,
     WhileStmt,
 )
-from .source_span import SourceSpan
+from .source_span import SourcePosition, SourceSpan
 
 __all__ = [
     "AssignExpr",
@@ -37,6 +37,7 @@ __all__ = [
     "Node",
     "Program",
     "ReturnStmt",
+    "SourcePosition",
     "SourceSpan",
     "Statement",
     "UnaryExpr",

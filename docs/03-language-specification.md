@@ -424,6 +424,39 @@ let value = 1 let next = 2
 fn bad(a, ) { }
 ```
 
+## 5.8 AST resource and structural constraints
+
+The AST model has explicit structural resource contracts. Parser enforcement is
+required when a parser is implemented; the presence of constants and parser
+context scaffolding does not mean a parser currently enforces these limits.
+
+| Limit | Value | Meaning |
+|---|---:|---|
+| `MAX_AST_NODES` | 1,000,000 | Maximum total AST nodes for one `Program`. |
+| `MAX_AST_DEPTH` | 256 | Maximum structural nesting depth of an AST. |
+| `MAX_DIRECT_CHILDREN` | 262,144 | Maximum number of direct children in one collection. |
+| `MAX_EXPRESSION_NODES` | 262,144 | Maximum nodes in one expression tree. |
+| `MAX_STATEMENT_NODES` | 262,144 | Maximum nodes in one statement tree. |
+
+AST depth is structural: the root node has depth 1, and each child edge adds
+one level. A valid AST is a finite tree. `Program` has no parent; every other
+node has exactly one parent. Cycles and reuse of the same Python node object at
+multiple child locations are invalid. Node identity for reuse checks is based
+on `id(node)`, not structural equality.
+
+Every node has a source span using half-open coordinates: `start` is inclusive
+and `end` is exclusive. A child span must be contained by its parent span.
+Direct siblings must be in source order and must not overlap; adjacent siblings
+are valid when the previous child's `end` equals the next child's `start`.
+
+The parser owns grammar validity, AST resource-limit enforcement, and
+source-located diagnostics. The AST owns immutable node data and structural
+invariants such as child types, span containment, sibling ordering, and direct
+collection bounds. AST validation helpers can additionally detect graph cycles
+and node reuse for tests, AST loading, and transformation validation; those
+checks are not automatically run for every node construction. User-facing
+limit violations must be reported as parser diagnostics with source locations.
+
 ## 6. Scope and semantic constraints
 
 Zen uses block scope. Exact declaration, redeclaration, name-resolution,
@@ -462,10 +495,12 @@ Source → Lexer → Parser → AST → Semantic Analysis
 - Newline tokens
 - Strict lexical errors with locations
 - Immutable AST node model and source spans
+- AST structural validation
 
 ### Specified but not yet implemented
 
 - Formal v0.1 grammar and expression precedence
+- AST resource-limit enforcement by a parser (limits and context scaffolding exist; no parser enforcement is implemented)
 - Parser
 
 ### Planned
