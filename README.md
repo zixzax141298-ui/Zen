@@ -14,11 +14,15 @@ dan interpreted yang dirancang agar mudah dipelajari dan dikembangkan.
 |---|---|
 | Language specification | Initial version |
 | Lexer | Implemented |
-| Lexer tests | 15 lexer tests; 3 API tests (18 total) |
+| Lexer tests | 37 tests |
+| AST node model | Implemented |
+| AST tests | 18 tests |
+| Package/API tests | 3 tests |
+| Total test methods | 58 |
 | Package configuration | Implemented |
 | Public API | Lexer exports only |
 | Parser | Planned |
-| AST | Planned |
+| Semantic analysis | Planned |
 | Interpreter | Planned |
 | Runtime | Planned |
 

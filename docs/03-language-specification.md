@@ -37,8 +37,11 @@ Controlled to execute.
 
 ### Whitespace and newlines
 
-Spaces, tabs, and carriage returns are ignored.
-Newlines are preserved as `NEWLINE` tokens.
+Spaces and tabs are ignored.
+
+Zen recognizes LF (`\n`), CRLF (`\r\n`), and CR (`\r`) as line endings. Each line ending represents exactly one logical newline and emits one `NEWLINE` token. The token lexeme preserves the original source characters.
+
+Newlines inside block comments are preserved as `NEWLINE` tokens. Physical newlines inside string literals are rejected.
 
 ### Comments
 
