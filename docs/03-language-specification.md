@@ -92,6 +92,35 @@ Numeric literal limits:
 Identifiers begin with an ASCII letter or underscore.
 Subsequent characters may include ASCII letters, digits, and underscores.
 
+### Resource limits
+
+The lexer enforces the following limits to bound source-processing memory
+and work. Counts are measured in Python Unicode code points unless stated
+otherwise.
+
+| Resource | Maximum |
+|---|---:|
+| Source text | 2,097,152 characters |
+| Identifier | 256 characters |
+| Decoded string value | 1,048,576 characters |
+| Single comment body | 1,048,576 characters |
+| Non-EOF tokens | 262,144 tokens |
+| Integer literal | 1,024 digits |
+| Float literal | 1,024 digits, excluding the decimal point |
+
+The source limit is checked before lexing and counts Unicode code points,
+not encoded bytes. String limits count decoded characters; each valid escape
+sequence contributes one character. Comment limits exclude the opening and
+closing delimiters. For comment counting, CRLF contributes two source
+characters even though it represents one logical newline.
+
+The token limit counts every emitted non-EOF token, including `NEWLINE`
+tokens preserved from block comments. The `EOF` token is not counted.
+
+Exceeding a limit is a lexical error; input is never silently truncated.
+Source-size errors point to line 1, column 1. Identifier, string, and
+comment limit errors point to the start of the affected lexeme or comment.
+
 ### Keywords
 
 `let`, `const`, `fn`, `if`, `else`, `while`,

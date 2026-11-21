@@ -135,15 +135,30 @@ DOUBLE = {
     "||": TokenType.OR,
 }
 
+# Resource limits are measured in Python Unicode code points unless noted.
+MAX_SOURCE_CHARS = 2_097_152
+MAX_IDENTIFIER_CHARS = 256
+MAX_STRING_CHARS = 1_048_576
+MAX_COMMENT_CHARS = 1_048_576
+MAX_TOKENS = 262_144
+
 
 class Lexer:
     def __init__(self, source):
         if not isinstance(source, str):
             raise TypeError("source must be a string")
 
+        if len(source) > MAX_SOURCE_CHARS:
+            raise LexerError(
+                f"Source exceeds {MAX_SOURCE_CHARS} characters",
+                1,
+                1,
+            )
+
         self.source = source
         self.tokens = []
         self._finished = False
+        self._error = None
         self.current = 0
         self.line = 1
         self.column = 1
@@ -194,6 +209,13 @@ class Lexer:
         return True
 
     def _add(self, token_type, literal=None):
+        if len(self.tokens) >= MAX_TOKENS:
+            raise LexerError(
+                f"Token count exceeds {MAX_TOKENS}",
+                self.start_line,
+                self.start_column,
+            )
+
         lexeme = self.source[self.start:self.current]
 
         self.tokens.append(
@@ -207,14 +229,23 @@ class Lexer:
         )
 
     def tokenize(self):
+        if self._error is not None:
+            message, line, column = self._error
+            raise LexerError(message, line, column)
+
         if self._finished:
             return self.tokens.copy()
 
-        while not self._at_end():
-            self.start = self.current
-            self.start_line = self.line
-            self.start_column = self.column
-            self._scan_token()
+        try:
+            while not self._at_end():
+                self.start = self.current
+                self.start_line = self.line
+                self.start_column = self.column
+                self._scan_token()
+        except LexerError as error:
+            # A failed scan must never be resumed as a truncated token stream.
+            self._error = (error.message, error.line, error.column)
+            raise
 
         self.tokens.append(
             Token(TokenType.EOF, "", None, self.line, self.column)
@@ -234,7 +265,16 @@ class Lexer:
 
         # Single-line comment
         if char == "/" and self._peek() == "/":
+            self._advance()  # Consume the second comment delimiter.
+            comment_start = self.current
+
             while self._peek() not in ("\r", "\n", "\0"):
+                if self.current - comment_start >= MAX_COMMENT_CHARS:
+                    raise LexerError(
+                        f"Comment exceeds {MAX_COMMENT_CHARS} characters",
+                        self.start_line,
+                        self.start_column,
+                    )
                 self._advance()
             return
 
@@ -289,12 +329,26 @@ class Lexer:
     def _block_comment(self):
         comment_line = self.start_line
         comment_column = self.start_column
+        comment_start = self.current
 
         while not self._at_end():
             if self._peek() == "*" and self._peek_next() == "/":
                 self._advance()
                 self._advance()
                 return
+
+            # CRLF is one logical newline but two source code points.
+            width = (
+                2
+                if self._peek() == "\r" and self._peek_next() == "\n"
+                else 1
+            )
+            if self.current - comment_start + width > MAX_COMMENT_CHARS:
+                raise LexerError(
+                    f"Comment exceeds {MAX_COMMENT_CHARS} characters",
+                    comment_line,
+                    comment_column,
+                )
 
             if self._peek() in ("\r", "\n"):
                 self.start = self.current
@@ -352,8 +406,20 @@ class Lexer:
                         char_column,
                     )
 
+                if len(chars) >= MAX_STRING_CHARS:
+                    raise LexerError(
+                        f"String literal exceeds {MAX_STRING_CHARS} decoded characters",
+                        self.start_line,
+                        self.start_column,
+                    )
                 chars.append(escapes[escaped])
             else:
+                if len(chars) >= MAX_STRING_CHARS:
+                    raise LexerError(
+                        f"String literal exceeds {MAX_STRING_CHARS} decoded characters",
+                        self.start_line,
+                        self.start_column,
+                    )
                 chars.append(char)
 
         raise LexerError(
@@ -428,6 +494,12 @@ class Lexer:
             char = self._peek()
 
             if char.isascii() and (char.isalnum() or char == "_"):
+                if self.current - self.start >= MAX_IDENTIFIER_CHARS:
+                    raise LexerError(
+                        f"Identifier exceeds {MAX_IDENTIFIER_CHARS} characters",
+                        self.start_line,
+                        self.start_column,
+                    )
                 self._advance()
             else:
                 break
