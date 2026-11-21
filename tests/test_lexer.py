@@ -281,6 +281,105 @@ class LexerTests(unittest.TestCase):
         self.assertEqual((eof.line, eof.column), (1, 4))
 
 
+    def test_single_character_operator_error_locations(self):
+        cases = [
+            ("a & b", (1, 3)),
+            ("a | b", (1, 3)),
+        ]
+        for source, expected in cases:
+            with self.subTest(source=source):
+                with self.assertRaises(LexerError) as context:
+                    Lexer(source).tokenize()
+                self.assertEqual(
+                    (context.exception.line, context.exception.column),
+                    expected,
+                )
+
+    def test_unterminated_block_comment_location(self):
+        with self.assertRaises(LexerError) as context:
+            Lexer("a\n /* open").tokenize()
+
+        self.assertEqual(
+            (context.exception.line, context.exception.column),
+            (2, 2),
+        )
+
+    def test_unterminated_string_location(self):
+        with self.assertRaises(LexerError) as context:
+            Lexer('a\n"open').tokenize()
+
+        self.assertEqual(
+            (context.exception.line, context.exception.column),
+            (2, 1),
+        )
+
+    def test_unknown_escape_location_points_to_backslash(self):
+        with self.assertRaises(LexerError) as context:
+            Lexer('"abc\\q"').tokenize()
+
+        self.assertEqual(
+            (context.exception.line, context.exception.column),
+            (1, 5),
+        )
+
+    def test_numeric_suffix_error_location(self):
+        with self.assertRaises(LexerError) as context:
+            Lexer("12abc").tokenize()
+
+        self.assertEqual(
+            (context.exception.line, context.exception.column),
+            (1, 3),
+        )
+
+    def test_numeric_range_error_locations(self):
+        cases = [
+            ("x " + "9" * 1025, (1, 3)),
+            ("x " + "1." + "2" * 1024, (1, 3)),
+            ("x " + "9" * 309 + ".0", (1, 3)),
+        ]
+        for source, expected in cases:
+            with self.subTest(source_length=len(source)):
+                with self.assertRaises(LexerError) as context:
+                    Lexer(source).tokenize()
+                self.assertEqual(
+                    (context.exception.line, context.exception.column),
+                    expected,
+                )
+
+    def test_dangling_escape_location(self):
+        with self.assertRaises(LexerError) as context:
+            Lexer('"abc\\').tokenize()
+
+        self.assertEqual(
+            (context.exception.line, context.exception.column),
+            (1, 1),
+        )
+
+    def test_error_locations_are_consistent_across_newline_styles(self):
+        newlines = {
+            "LF": "\n",
+            "CRLF": "\r\n",
+            "CR": "\r",
+        }
+        cases = [
+            ("illegal character", lambda nl: ("a" + nl + "@", (2, 1))),
+            ("unterminated string", lambda nl: ('"abc' + nl + "def", (1, 1))),
+            ("unterminated comment", lambda nl: ("a" + nl + "/* open", (2, 1))),
+            ("unknown escape", lambda nl: ('a' + nl + '"x\\q"', (2, 3))),
+        ]
+
+        for newline_name, newline in newlines.items():
+            for case_name, build_case in cases:
+                source, expected = build_case(newline)
+                with self.subTest(newline=newline_name, case=case_name):
+                    with self.assertRaises(LexerError) as context:
+                        Lexer(source).tokenize()
+                    self.assertEqual(
+                        (context.exception.line, context.exception.column),
+                        expected,
+                    )
+
+
 class TokenSafetyTests(unittest.TestCase):
     def test_token_attributes_are_frozen(self):
         from src.zen.lexer import Token
