@@ -1,7 +1,7 @@
 # Zen Programming Language
 
 **Version:** 0.1.0
-**Milestone:** Z1 Lexer
+**Milestone:** ZB-05 Formal Grammar
 
 > Simple to write. Clear to understand. Controlled to execute.
 
@@ -12,7 +12,7 @@ dan interpreted yang dirancang agar mudah dipelajari dan dikembangkan.
 
 | Component | Status |
 |---|---|
-| Language specification | Initial version |
+| Language specification | Formal v0.1 grammar specified |
 | Lexer | Implemented |
 | Lexer tests | 66 tests |
 | AST node model | Implemented |
@@ -21,10 +21,13 @@ dan interpreted yang dirancang agar mudah dipelajari dan dikembangkan.
 | Total test methods | 87 |
 | Package configuration | Implemented |
 | Public API | Lexer exports only |
-| Parser | Planned |
+| Parser | Not implemented |
 | Semantic analysis | Planned |
 | Interpreter | Planned |
 | Runtime | Planned |
+
+The formal grammar defines the intended v0.1 syntax. It does not mean
+that Zen source programs can already be parsed or executed.
 
 ## Requirements
 
@@ -51,6 +54,9 @@ The initial public API exports:
 - `Token`
 - `TokenType`
 
+The AST node model is currently available from `zen.ast`; it is not yet
+part of the top-level `zen` public API.
+
 Example:
 
 ```python
@@ -70,5 +76,5 @@ python -m unittest discover -s tests -v
 ## Documentation
 
 - [Installation Guide](docs/02-installation.md)
-- [Language Specification](docs/03-language-specification.md)
+- [Language Specification and Formal Grammar](docs/03-language-specification.md)
 - [Changelog](CHANGELOG.md)
