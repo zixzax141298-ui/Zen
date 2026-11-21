@@ -1,5 +1,7 @@
 import unittest
+from unittest.mock import patch
 
+import src.zen.lexer as lexer_module
 from src.zen.lexer import Lexer, LexerError, TokenType
 
 
@@ -481,6 +483,130 @@ class TokenSafetyTests(unittest.TestCase):
             sum(token.type == TokenType.EOF for token in second),
             1,
         )
+
+
+class ResourceSafetyTests(unittest.TestCase):
+
+    def test_resource_limits_are_fixed(self):
+        self.assertEqual(lexer_module.MAX_SOURCE_CHARS, 2_097_152)
+        self.assertEqual(lexer_module.MAX_IDENTIFIER_CHARS, 256)
+        self.assertEqual(lexer_module.MAX_STRING_CHARS, 1_048_576)
+        self.assertEqual(lexer_module.MAX_COMMENT_CHARS, 1_048_576)
+        self.assertEqual(lexer_module.MAX_TOKENS, 262_144)
+
+    def test_source_size_limit_boundary_and_error_location(self):
+        with patch.object(lexer_module, "MAX_SOURCE_CHARS", 4):
+            self.assertEqual(
+                Lexer("abcd").tokenize()[-1].type,
+                TokenType.EOF,
+            )
+            with self.assertRaises(LexerError) as context:
+                Lexer("abcde")
+        self.assertEqual(
+            (context.exception.line, context.exception.column),
+            (1, 1),
+        )
+
+    def test_source_size_counts_unicode_code_points(self):
+        with patch.object(lexer_module, "MAX_SOURCE_CHARS", 1):
+            lexer = Lexer("é")
+            with self.assertRaises(LexerError) as context:
+                lexer.tokenize()
+        self.assertIn("Unexpected character", context.exception.message)
+
+    def test_identifier_size_limit_boundary_and_error_location(self):
+        with patch.object(lexer_module, "MAX_IDENTIFIER_CHARS", 3):
+            self.assertEqual(
+                Lexer("abc").tokenize()[0].literal,
+                "abc",
+            )
+            with self.assertRaises(LexerError) as context:
+                Lexer("abcd").tokenize()
+        self.assertEqual(
+            (context.exception.line, context.exception.column),
+            (1, 1),
+        )
+
+    def test_string_limit_counts_decoded_characters(self):
+        with patch.object(lexer_module, "MAX_STRING_CHARS", 3):
+            self.assertEqual(
+                Lexer(r'"a\nb"').tokenize()[0].literal,
+                "a\nb",
+            )
+            with self.assertRaises(LexerError) as context:
+                Lexer(r'"a\nbc"').tokenize()
+        self.assertEqual(
+            (context.exception.line, context.exception.column),
+            (1, 1),
+        )
+
+    def test_line_comment_limit_excludes_delimiters(self):
+        with patch.object(lexer_module, "MAX_COMMENT_CHARS", 3):
+            self.assertEqual(
+                Lexer("//abc\nx").tokenize()[-2].type,
+                TokenType.IDENTIFIER,
+            )
+            with self.assertRaises(LexerError) as context:
+                Lexer("//abcd").tokenize()
+        self.assertEqual(
+            (context.exception.line, context.exception.column),
+            (1, 1),
+        )
+
+    def test_block_comment_limit_excludes_delimiters(self):
+        with patch.object(lexer_module, "MAX_COMMENT_CHARS", 3):
+            self.assertEqual(
+                Lexer("/*abc*/x").tokenize()[0].literal,
+                "x",
+            )
+            with self.assertRaises(LexerError) as context:
+                Lexer("/*abcd*/").tokenize()
+        self.assertEqual(
+            (context.exception.line, context.exception.column),
+            (1, 1),
+        )
+
+    def test_block_comment_crlf_counts_two_source_characters(self):
+        with patch.object(lexer_module, "MAX_COMMENT_CHARS", 2):
+            tokens = Lexer("/*\r\n*/x").tokenize()
+        self.assertEqual(
+            [token.type for token in tokens],
+            [TokenType.NEWLINE, TokenType.IDENTIFIER, TokenType.EOF],
+        )
+
+    def test_token_limit_excludes_eof_and_rejects_next_token(self):
+        with patch.object(lexer_module, "MAX_TOKENS", 2):
+            tokens = Lexer("a b").tokenize()
+            self.assertEqual(
+                [token.type for token in tokens],
+                [TokenType.IDENTIFIER, TokenType.IDENTIFIER, TokenType.EOF],
+            )
+            with self.assertRaises(LexerError) as context:
+                Lexer("a b c").tokenize()
+        self.assertEqual(
+            (context.exception.line, context.exception.column),
+            (1, 5),
+        )
+
+    def test_token_limit_failure_cannot_be_retried_as_truncated_output(self):
+        with patch.object(lexer_module, "MAX_TOKENS", 1):
+            lexer = Lexer("a b")
+            with self.assertRaises(LexerError) as first:
+                lexer.tokenize()
+            with self.assertRaises(LexerError) as second:
+                lexer.tokenize()
+        self.assertEqual(str(first.exception), str(second.exception))
+        self.assertIsNot(first.exception, second.exception)
+
+    def test_newline_tokens_inside_block_comments_count_toward_token_limit(self):
+        with patch.object(lexer_module, "MAX_TOKENS", 1):
+            with self.assertRaises(LexerError) as context:
+                Lexer("a/*\nb*/").tokenize()
+        self.assertEqual(
+            (context.exception.line, context.exception.column),
+            (1, 4),
+        )
+
 
 if __name__ == "__main__":
     unittest.main()
