@@ -103,37 +103,48 @@ If implementation reveals a necessary scope change, stop and request approval.
 A component must not silently take over another component's responsibility.
 Validation must not silently repair malformed canonical AST input.
 
-## 8. Active Milestone — ZB-07
+## 8. Milestone Status and Active Work
 
-**ZB-07 — AST Semantic Readiness & Source Identity Contract**
+### ZB-07 — AST Semantic Readiness & Source Identity Contract
 
-Approved technical baseline: `0003a9b961810510c2d67c7851ab3f2e9327c5b2`
-Baseline branch: `audit/zb06-strict-ast-contract`
-Initial project baseline: `6bb9611eeec73a6c1bd543150eedc2d151b219a0`
+**Status:** CLOSED — scope-qualified.
+
+- Implementation commit: `a6f3770f50dd5f7cb637cd7239220f07eecf6414`
+- Pull request: #8 — merged into `main`.
+- Post-merge `main` commit: `a62f4e904adfc9f9ae1e2d15b1d0d8e57fc5d676`
+- Post-push Termux regression result: `134 passed, 68 subtests passed`.
+- Historical approved baseline: `0003a9b961810510c2d67c7851ab3f2e9327c5b2`.
+- Historical baseline branch: `audit/zb06-strict-ast-contract`.
+- Evidence ledger: `docs/engineering/ZB-07_EVIDENCE.md`.
+
+Closure is limited to the approved ZB-07 scope and the recorded evidence.
+It does not claim that deferred work, performance measurements, memory
+measurements, cross-platform verification, or remote CI verification are complete.
+
+### ZIIF-01 — Canonical AST Identity Fingerprint
+
+**Status:** ACTIVE — implementation applied; local tests passed; final review pending.
+
+- Baseline branch: `feature/ziif-01-ast-fingerprint`
+- Baseline commit: `a62f4e904adfc9f9ae1e2d15b1d0d8e57fc5d676`
+- Change Plan: `docs/engineering/ZIIF-01_CHANGE_PLAN.md`
+- Evidence ledger: `docs/engineering/ZIIF-01_EVIDENCE.md`
 
 Approved scope:
-- Stable source identity and source locations.
-- Immutable `SourceIdentifier` and separation of identity from source span.
-- Explicit legacy AST compatibility adapter.
-- Source-order validation.
-- Unified `validate_ast` contract and validation result.
-- AST graph integrity, including cycles and reused nodes.
-- Explicit resource accounting and limits.
-- Iterative deterministic AST validation.
-- Parser depth safety, distinguished from AST structural depth and node count.
-- Common diagnostic model and component contracts.
-- Regression, performance, and memory verification.
+- Versioned canonical AST structural fingerprint using SHA-256 and domain separation.
+- Explicit closed node schemas and deterministic field ordering.
+- Mandatory `validate_ast` before fingerprint generation.
+- Iterative encoding and public API exports.
+- Focused regression tests and evidence documentation.
 
 Explicit exclusions:
-- Full Semantic Analysis implementation.
-- Grammar redesign.
-- Runtime rewrite.
-- Optimizer or IR implementation.
-- Python–Rust integration.
+- AST node, grammar, or parser changes.
+- Semantic analysis, runtime, optimizer, or IR changes.
+- Resource-limit or security-policy changes.
+- Dependency additions or Python-Rust integration.
+- Changes to `SECURITY.md`.
 
 Do not expand this milestone without a separate Change Plan and Owner approval.
-Record requirement-level evidence in `docs/engineering/ZB-07_EVIDENCE.md`.
-
 ## 9. Evidence and Documentation
 
 Use these evidence labels consistently:

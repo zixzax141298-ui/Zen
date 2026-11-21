@@ -1,7 +1,7 @@
 # Zen Programming Language
 
 **Version:** 0.1.0
-**Milestone:** ZB-07 AST Semantic Readiness & Source Identity Contract
+**Milestone:** ZIIF-01 Canonical AST Identity Fingerprint
 
 > Simple to write. Clear to understand. Controlled to execute.
 
