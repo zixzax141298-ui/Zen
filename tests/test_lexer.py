@@ -281,5 +281,107 @@ class LexerTests(unittest.TestCase):
         self.assertEqual((eof.line, eof.column), (1, 4))
 
 
+class TokenSafetyTests(unittest.TestCase):
+    def test_token_attributes_are_frozen(self):
+        from src.zen.lexer import Token
+
+        token = Token(TokenType.INTEGER, "42", 42, 1, 1)
+
+        with self.assertRaises(AttributeError):
+            token.lexeme = "99"
+
+    def test_token_rejects_invalid_type(self):
+        from src.zen.lexer import Token
+
+        with self.assertRaises(TypeError):
+            Token("INTEGER", "42", 42, 1, 1)
+
+    def test_token_rejects_invalid_lexeme(self):
+        from src.zen.lexer import Token
+
+        with self.assertRaises(TypeError):
+            Token(TokenType.INTEGER, 42, 42, 1, 1)
+
+    def test_token_rejects_mutable_literal(self):
+        from src.zen.lexer import Token
+
+        for value in ([], {}, set(), object()):
+            with self.subTest(value_type=type(value).__name__):
+                with self.assertRaises(TypeError):
+                    Token(TokenType.STRING, '"x"', value, 1, 1)
+
+    def test_token_rejects_boolean_literal(self):
+        from src.zen.lexer import Token
+
+        with self.assertRaises(TypeError):
+            Token(TokenType.TRUE, "true", True, 1, 1)
+
+    def test_token_rejects_non_finite_float(self):
+        from src.zen.lexer import Token
+
+        for value in (float("nan"), float("inf"), float("-inf")):
+            with self.subTest(value=value):
+                with self.assertRaises(ValueError):
+                    Token(TokenType.FLOAT, "1.0", value, 1, 1)
+
+    def test_token_rejects_invalid_line_and_column(self):
+        from src.zen.lexer import Token
+
+        for field, value in (
+            ("line", 0),
+            ("line", -1),
+            ("line", True),
+            ("column", 0),
+            ("column", -1),
+            ("column", False),
+        ):
+            with self.subTest(field=field, value=value):
+                args = {
+                    "type": TokenType.IDENTIFIER,
+                    "lexeme": "name",
+                    "literal": "name",
+                    "line": 1,
+                    "column": 1,
+                }
+                args[field] = value
+                with self.assertRaises(ValueError):
+                    Token(**args)
+
+    def test_token_accepts_valid_literal_types(self):
+        from src.zen.lexer import Token
+
+        for value in (None, 42, 3.14, "hello"):
+            with self.subTest(value=value):
+                token = Token(
+                    TokenType.IDENTIFIER, "name", value, 1, 1
+                )
+                self.assertEqual(token.literal, value)
+
+    def test_tokenize_returns_independent_lists(self):
+        lexer = Lexer("let answer = 42")
+
+        first = lexer.tokenize()
+        second = lexer.tokenize()
+
+        self.assertIsNot(first, second)
+        self.assertEqual(first, second)
+
+    def test_mutating_tokenize_result_does_not_corrupt_cache(self):
+        lexer = Lexer("let answer = 42")
+
+        first = lexer.tokenize()
+        original_count = len(first)
+
+        first.clear()
+
+        second = lexer.tokenize()
+
+        self.assertEqual(len(second), original_count)
+        self.assertEqual(second[-1].type, TokenType.EOF)
+        self.assertEqual(
+            sum(token.type == TokenType.EOF for token in second),
+            1,
+        )
+
 if __name__ == "__main__":
     unittest.main()

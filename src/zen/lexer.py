@@ -59,6 +59,28 @@ class Token:
     line: int
     column: int
 
+    def __post_init__(self):
+        if not isinstance(self.type, TokenType):
+            raise TypeError("type must be a TokenType")
+
+        if type(self.lexeme) is not str:
+            raise TypeError("lexeme must be a string")
+
+        if self.literal is not None:
+            if type(self.literal) not in (int, float, str):
+                raise TypeError(
+                    "literal must be int, float, str, or None"
+                )
+
+            if type(self.literal) is float and not math.isfinite(self.literal):
+                raise ValueError("literal float must be finite")
+
+        if type(self.line) is not int or self.line <= 0:
+            raise ValueError("line must be a positive integer")
+
+        if type(self.column) is not int or self.column <= 0:
+            raise ValueError("column must be a positive integer")
+
 
 class LexerError(Exception):
     def __init__(self, message, line, column):
@@ -186,7 +208,7 @@ class Lexer:
 
     def tokenize(self):
         if self._finished:
-            return self.tokens
+            return self.tokens.copy()
 
         while not self._at_end():
             self.start = self.current
@@ -198,7 +220,7 @@ class Lexer:
             Token(TokenType.EOF, "", None, self.line, self.column)
         )
         self._finished = True
-        return self.tokens
+        return self.tokens.copy()
 
     def _scan_token(self):
         char = self._advance()
