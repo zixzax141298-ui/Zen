@@ -3,9 +3,11 @@
 from __future__ import annotations
 
 import math
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 from zen.limits import MAX_DIRECT_CHILDREN
+from .source_identity import SourceIdentifier
+from .source_location import SourceLocation
 from .source_span import SourceSpan
 
 
@@ -31,10 +33,30 @@ def _validate_children(parent: "Node", children: tuple, field_name: str) -> None
 @dataclass(frozen=True, slots=True)
 class Node:
     span: SourceSpan
+    # Optional only during staged legacy migration.
+    # validate_ast rejects nodes without a SourceIdentifier.
+    source_id: SourceIdentifier | None = field(
+        default=None,
+        kw_only=True,
+    )
 
     def __post_init__(self) -> None:
         if not isinstance(self.span, SourceSpan):
             raise TypeError("AST node span must be a SourceSpan")
+
+        if (
+            self.source_id is not None
+            and not isinstance(self.source_id, SourceIdentifier)
+        ):
+            raise TypeError(
+                "AST node source_id must be a SourceIdentifier or None"
+            )
+
+    @property
+    def location(self) -> SourceLocation | None:
+        if self.source_id is None:
+            return None
+        return SourceLocation(self.source_id, self.span)
 
 
 class Statement(Node):

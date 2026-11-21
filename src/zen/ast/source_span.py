@@ -1,4 +1,4 @@
-"""Source positions and half-open source spans for Zen syntax trees."""
+"""Source coordinates and half-open spans, independent of source identity."""
 
 from dataclasses import dataclass
 

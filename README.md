@@ -1,7 +1,7 @@
 # Zen Programming Language
 
 **Version:** 0.1.0
-**Milestone:** ZB-05 Formal Grammar
+**Milestone:** ZB-07 AST Semantic Readiness & Source Identity Contract
 
 > Simple to write. Clear to understand. Controlled to execute.
 
@@ -14,11 +14,11 @@ dan interpreted yang dirancang agar mudah dipelajari dan dikembangkan.
 |---|---|
 | Language specification | Formal v0.1 grammar specified |
 | Lexer | Implemented |
-| Lexer tests | 66 tests |
+
 | AST node model | Implemented |
-| AST tests | 18 tests |
-| Package/API tests | 3 tests |
-| Total test methods | 87 |
+
+
+
 | Package configuration | Implemented |
 | Public API | Lexer exports only |
 | Parser | Not implemented |
