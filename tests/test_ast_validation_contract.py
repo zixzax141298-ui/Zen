@@ -1,0 +1,437 @@
+import math
+import unittest
+
+from zen.ast import (
+    ASTValidationLimits,
+    BinaryExpr,
+    BlockStmt,
+    ExpressionStmt,
+    FunctionDecl,
+    LiteralExpr,
+    Program,
+    SourceIdentifier,
+    SourceSpan,
+    UnaryExpr,
+    validate_ast,
+)
+
+from zen.parser import ParseContext, ParseError
+
+
+def sp(start=1, end=10):
+    return SourceSpan(1, start, 1, end)
+
+
+def valid_program():
+    source_id = SourceIdentifier.new()
+
+    expression = BinaryExpr(
+        sp(),
+        LiteralExpr(sp(2, 3), 1, source_id=source_id),
+        "+",
+        LiteralExpr(sp(4, 5), 2, source_id=source_id),
+        source_id=source_id,
+    )
+
+    statement = ExpressionStmt(
+        sp(),
+        expression,
+        source_id=source_id,
+    )
+
+    return Program(
+        sp(),
+        (statement,),
+        source_id=source_id,
+    )
+
+
+class AstValidationContractTests(unittest.TestCase):
+
+    def codes(self, result):
+        return {
+            diagnostic.code
+            for diagnostic in result.diagnostics
+        }
+
+    def test_valid_program_reports_deterministic_accounting(self):
+        program = valid_program()
+
+        first = validate_ast(program)
+
+        self.assertTrue(first.is_valid)
+        self.assertTrue(first.complete)
+
+        self.assertEqual(first.nodes_visited, 5)
+        self.assertEqual(first.expression_nodes, 3)
+        self.assertEqual(first.statement_nodes, 1)
+        self.assertEqual(first.max_depth, 4)
+
+        self.assertEqual(first, validate_ast(program))
+
+    def test_missing_and_mixed_source_identity_are_rejected(self):
+        legacy = Program(
+            sp(),
+            (
+                ExpressionStmt(
+                    sp(),
+                    LiteralExpr(sp(), 1),
+                ),
+            ),
+        )
+
+        self.assertIn(
+            "AST_SOURCE_ID_MISSING",
+            self.codes(validate_ast(legacy)),
+        )
+
+        program = valid_program()
+
+        object.__setattr__(
+            program.statements[0],
+            "source_id",
+            SourceIdentifier.new(),
+        )
+
+        self.assertIn(
+            "AST_SOURCE_ID_MISMATCH",
+            self.codes(validate_ast(program)),
+        )
+
+    def test_invalid_source_identity_type_is_rejected(self):
+        program = valid_program()
+
+        object.__setattr__(
+            program,
+            "source_id",
+            "invalid",
+        )
+
+        self.assertIn(
+            "AST_SOURCE_ID_INVALID",
+            self.codes(validate_ast(program)),
+        )
+
+    def test_invalid_child_is_reported(self):
+        program = valid_program()
+
+        object.__setattr__(
+            program,
+            "statements",
+            (object(),),
+        )
+
+        self.assertIn(
+            "AST_CHILD_TYPE_INVALID",
+            self.codes(validate_ast(program)),
+        )
+
+    def test_cycle_and_reused_node_are_reported(self):
+        source_id = SourceIdentifier.new()
+
+        cyclic = BlockStmt(
+            sp(),
+            (),
+            source_id=source_id,
+        )
+
+        object.__setattr__(
+            cyclic,
+            "statements",
+            (cyclic,),
+        )
+
+        root = Program(
+            sp(),
+            (cyclic,),
+            source_id=source_id,
+        )
+
+        self.assertIn(
+            "AST_NODE_CYCLE",
+            self.codes(validate_ast(root)),
+        )
+
+        shared = ExpressionStmt(
+            sp(2, 3),
+            LiteralExpr(
+                sp(2, 3),
+                1,
+                source_id=source_id,
+            ),
+            source_id=source_id,
+        )
+
+        reused = Program(
+            sp(),
+            (shared,),
+            source_id=source_id,
+        )
+
+        object.__setattr__(
+            reused,
+            "statements",
+            (shared, shared),
+        )
+
+        self.assertIn(
+            "AST_NODE_REUSED",
+            self.codes(validate_ast(reused)),
+        )
+
+    def test_non_finite_literal_corruption_is_reported(self):
+        source_id = SourceIdentifier.new()
+
+        literal = LiteralExpr(
+            sp(2, 3),
+            1,
+            source_id=source_id,
+        )
+
+        object.__setattr__(
+            literal,
+            "value",
+            math.inf,
+        )
+
+        statement = ExpressionStmt(
+            sp(2, 3),
+            literal,
+            source_id=source_id,
+        )
+
+        program = Program(
+            sp(),
+            (statement,),
+            source_id=source_id,
+        )
+
+        self.assertIn(
+            "AST_FIELD_INVALID",
+            self.codes(validate_ast(program)),
+        )
+
+    def test_source_order_is_revalidated(self):
+        source_id = SourceIdentifier.new()
+
+        first = ExpressionStmt(
+            sp(4, 5),
+            LiteralExpr(
+                sp(4, 5),
+                1,
+                source_id=source_id,
+            ),
+            source_id=source_id,
+        )
+
+        second = ExpressionStmt(
+            sp(2, 3),
+            LiteralExpr(
+                sp(2, 3),
+                2,
+                source_id=source_id,
+            ),
+            source_id=source_id,
+        )
+
+        program = Program(
+            sp(),
+            (first,),
+            source_id=source_id,
+        )
+
+        object.__setattr__(
+            program,
+            "statements",
+            (first, second),
+        )
+
+        self.assertIn(
+            "AST_SOURCE_ORDER_INVALID",
+            self.codes(validate_ast(program)),
+        )
+
+    def test_all_resource_dimensions_are_bounded(self):
+        source_id = SourceIdentifier.new()
+
+        first = ExpressionStmt(
+            sp(2, 3),
+            LiteralExpr(
+                sp(2, 3),
+                1,
+                source_id=source_id,
+            ),
+            source_id=source_id,
+        )
+
+        second = ExpressionStmt(
+            sp(4, 5),
+            LiteralExpr(
+                sp(4, 5),
+                2,
+                source_id=source_id,
+            ),
+            source_id=source_id,
+        )
+
+        program = Program(
+            sp(),
+            (first, second),
+            source_id=source_id,
+        )
+
+        cases = (
+            (
+                ASTValidationLimits(max_nodes=2),
+                "AST_NODE_LIMIT_EXCEEDED",
+            ),
+            (
+                ASTValidationLimits(max_direct_children=1),
+                "AST_DIRECT_CHILD_LIMIT_EXCEEDED",
+            ),
+            (
+                ASTValidationLimits(max_statement_nodes=1),
+                "AST_STATEMENT_LIMIT_EXCEEDED",
+            ),
+            (
+                ASTValidationLimits(max_expression_nodes=1),
+                "AST_EXPRESSION_LIMIT_EXCEEDED",
+            ),
+            (
+                ASTValidationLimits(max_depth=2),
+                "AST_DEPTH_LIMIT_EXCEEDED",
+            ),
+        )
+
+        for limits, expected_code in cases:
+            with self.subTest(limit=expected_code):
+                self.assertIn(
+                    expected_code,
+                    self.codes(validate_ast(program, limits)),
+                )
+
+    def test_parameter_limit_is_counted(self):
+        source_id = SourceIdentifier.new()
+
+        body = BlockStmt(
+            sp(8, 9),
+            (),
+            source_id=source_id,
+        )
+
+        function = FunctionDecl(
+            sp(),
+            "f",
+            ("a", "b"),
+            body,
+            source_id=source_id,
+        )
+
+        program = Program(
+            sp(),
+            (function,),
+            source_id=source_id,
+        )
+
+        result = validate_ast(
+            program,
+            ASTValidationLimits(max_parameters=1),
+        )
+
+        self.assertIn(
+            "AST_PARAMETER_LIMIT_EXCEEDED",
+            self.codes(result),
+        )
+
+    def test_deep_validation_is_iterative_and_stops_at_limit(self):
+        source_id = SourceIdentifier.new()
+
+        expression = LiteralExpr(
+            sp(),
+            1,
+            source_id=source_id,
+        )
+
+        for _ in range(400):
+            expression = UnaryExpr(
+                sp(),
+                "!",
+                expression,
+                source_id=source_id,
+            )
+
+        statement = ExpressionStmt(
+            sp(),
+            expression,
+            source_id=source_id,
+        )
+
+        program = Program(
+            sp(),
+            (statement,),
+            source_id=source_id,
+        )
+
+        result = validate_ast(program)
+
+        self.assertFalse(result.is_valid)
+
+        self.assertIn(
+            "AST_DEPTH_LIMIT_EXCEEDED",
+            self.codes(result),
+        )
+
+        self.assertFalse(result.complete)
+
+    def test_invalid_root_is_rejected(self):
+        result = validate_ast(object())
+
+        self.assertFalse(result.is_valid)
+        self.assertFalse(result.complete)
+
+        self.assertEqual(
+            result.diagnostics[0].code,
+            "AST_ROOT_TYPE_INVALID",
+        )
+
+    def test_parser_depth_and_common_diagnostic_preserve_compatibility(self):
+        source_id = SourceIdentifier.new()
+
+        context = ParseContext.initial(source_id)
+
+        self.assertEqual(context.parser_depth, 0)
+
+        for _ in range(256):
+            context = context.enter(sp())
+
+        with self.assertRaises(ParseError) as caught:
+            context.enter(sp())
+
+        diagnostic = caught.exception.as_diagnostic()
+
+        self.assertEqual(diagnostic.component, "Parser")
+        self.assertEqual(
+            diagnostic.source_location.source_id,
+            source_id,
+        )
+        self.assertEqual(diagnostic.code, "PARSER_ERROR")
+
+        old_style = ParseError(
+            "bad syntax",
+            2,
+            4,
+            sp(),
+        )
+
+        self.assertEqual(
+            str(old_style),
+            "bad syntax at line 2, column 4",
+        )
+
+        self.assertIsNone(
+            old_style.as_diagnostic().source_location
+        )
+
+
+if __name__ == "__main__":
+    unittest.main()

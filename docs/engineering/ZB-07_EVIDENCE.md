@@ -7,8 +7,8 @@
 Document type: Initial manual engineering evidence ledger
 Milestone: ZB-07
 Ledger status: BASELINE_APPROVED / EVIDENCE_IN_PROGRESS
-Implementation status: NOT ESTABLISHED
-Verification status: PARTIAL — BASELINE REGRESSION ONLY; ZB-07 REQUIREMENTS NOT VERIFIED
+Implementation status: IMPLEMENTED LOCALLY — final diff review and commit pending.
+Verification status: PARTIALLY_VERIFIED — Termux regression suite passed; individual acceptance criteria, performance, and memory evidence remain under review.
 
 Approved technical baseline commit:
 
@@ -349,6 +349,20 @@ independently inspect the result.
 - Working-tree state: No tracked modifications were reported. Untracked governance documents and backup files were present.
 - Related baseline inspection: HEAD matched `origin/audit/zb06-strict-ast-contract`.
 - Limitations: This evidence covers the existing regression suite only. It does not establish completion of ZB-07 requirements, cross-platform compatibility, performance, or memory claims.
+
+### EVD-ZB07-002 — Local ZB-07 regression run
+
+- Date: 2026-11-22 (+07:00).
+- Exact execution time: Not captured.
+- Requirements: Regression evidence for the current local ZB-07 working tree; this result does not independently verify every acceptance criterion.
+- Revision: HEAD `ef8ea901910f56388053c4be550ed1066b458df2`; ZB-07 changes were uncommitted working-tree modifications.
+- Branch: `feature/zb07-source-identity-validation`.
+- Environment: Android / Termux; Python 3.14.10; pytest 9.2.0; editable package installation.
+- Command: `python -m pytest -v`.
+- Result: `134 passed, 68 subtests passed in 0.62s`.
+- Execution source: Locally executed by the Owner in Termux.
+- Additional smoke check: `from zen import Lexer` successfully tokenized `let answer = 42`.
+- Limitations: This is pre-commit working-tree evidence, not post-push or remote CI evidence. It does not establish that every ZB-07 acceptance criterion is satisfied. Termux performance and memory measurements have not yet been recorded. Cross-platform behavior has not been established.
 
 ## 8. Technical Decision Register
 

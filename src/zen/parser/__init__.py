@@ -3,4 +3,7 @@
 from .context import ParseContext
 from .diagnostics import ParseError
 
-__all__ = ["ParseContext", "ParseError"]
+__all__ = [
+    "ParseContext",
+    "ParseError",
+]
