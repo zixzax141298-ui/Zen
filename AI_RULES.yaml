@@ -134,33 +134,39 @@ architecture:
     semantic_analysis_silently_mutates_validated_ast: false
 
 active_milestone:
-  id: "ZB-07"
-  name: "AST Semantic Readiness & Source Identity Contract"
-  status: "ACTIVE_DESIGN_AND_GOVERNANCE"
-  baseline_commit: "0003a9b961810510c2d67c7851ab3f2e9327c5b2"
-
+  id: "ZIIF-01"
+  name: "Canonical AST Identity Fingerprint"
+  status: "IMPLEMENTATION_APPLIED_LOCAL_TESTS_PASSED_FINAL_REVIEW_PENDING"
+  baseline_commit: "a62f4e904adfc9f9ae1e2d15b1d0d8e57fc5d676"
+  baseline_branch: "feature/ziif-01-ast-fingerprint"
   scope:
-    - "Stable source identity"
-    - "Immutable SourceIdentifier"
-    - "Separation of SourceId and SourceSpan"
-    - "Explicit legacy AST compatibility adapter"
-    - "Source-order validation"
-    - "Unified validate_ast contract"
-    - "AST graph integrity validation"
-    - "Cycle and reused-node detection"
-    - "Explicit resource accounting and limits"
-    - "Iterative deterministic AST validation"
-    - "Parser depth safety"
-    - "Common diagnostic model"
-    - "Regression, performance, and memory verification"
-
+    - "Versioned canonical AST structural fingerprint"
+    - "SHA-256 with domain separation"
+    - "Explicit closed node schemas and fixed field order"
+    - "Mandatory validate_ast before encoding"
+    - "Iterative encoding"
+    - "SourceIdentifier and SourceSpan validation without digest inclusion"
+    - "Public API export"
+    - "Focused regression tests"
   exclusions:
-    - "Full Semantic Analysis implementation"
-    - "Grammar redesign"
-    - "Runtime rewrite"
+    - "AST node or grammar changes"
+    - "Parser implementation or changes"
+    - "Semantic analysis implementation"
+    - "Runtime changes"
     - "Optimizer or IR implementation"
+    - "Resource-limit changes"
+    - "Security-policy changes"
+    - "Dependency additions"
     - "Python-Rust integration"
-
+    - "Changes to SECURITY.md"
+  previous_milestone:
+    id: "ZB-07"
+    status: "CLOSED_SCOPE_QUALIFIED"
+    implementation_commit: "a6f3770f50dd5f7cb637cd7239220f07eecf6414"
+    merged_main_commit: "a62f4e904adfc9f9ae1e2d15b1d0d8e57fc5d676"
+    evidence: "docs/engineering/ZB-07_EVIDENCE.md"
+  evidence_ledger: "docs/engineering/ZIIF-01_EVIDENCE.md"
+  change_plan: "docs/engineering/ZIIF-01_CHANGE_PLAN.md"
   scope_expansion_requires_owner_approval: true
 
 resource_limits:

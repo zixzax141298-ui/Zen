@@ -33,6 +33,14 @@ from .validation import (
     validate_ast,
 )
 
+# ZIIF-01: Canonical AST Identity Fingerprint
+from .fingerprint import (
+    ASTFingerprintError,
+    FINGERPRINT_PREFIX,
+    FINGERPRINT_VERSION,
+    fingerprint_ast,
+)
+
 __all__ = [
     "AssignExpr",
     "ASTValidationLimits",
@@ -61,4 +69,10 @@ __all__ = [
     "VarDecl",
     "WhileStmt",
     "validate_ast",
+
+    # ZIIF-01 exports
+    "ASTFingerprintError",
+    "FINGERPRINT_PREFIX",
+    "FINGERPRINT_VERSION",
+    "fingerprint_ast",
 ]
