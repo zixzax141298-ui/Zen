@@ -134,39 +134,44 @@ architecture:
     semantic_analysis_silently_mutates_validated_ast: false
 
 active_milestone:
-  id: "ZIIF-01"
-  name: "Canonical AST Identity Fingerprint"
-  status: "IMPLEMENTATION_APPLIED_LOCAL_TESTS_PASSED_FINAL_REVIEW_PENDING"
-  baseline_commit: "a62f4e904adfc9f9ae1e2d15b1d0d8e57fc5d676"
-  baseline_branch: "feature/ziif-01-ast-fingerprint"
+  id: "ZB-07"
+  name: "AST Semantic Readiness & Source Identity Contract"
+  status: "REOPENED_OWNER_APPROVED_IMPLEMENTATION_AND_VERIFICATION_IN_PROGRESS"
+  priority: "HIGHEST"
+  baseline_commit: "ea2c14841540ce236d9c74d45401e47abe9982f7"
+  baseline_branch: "origin/main"
+  change_plan: "docs/engineering/ZB-07_CHANGE_PLAN.md"
+  evidence_ledger: "docs/engineering/ZB-07_EVIDENCE.md"
   scope:
-    - "Versioned canonical AST structural fingerprint"
-    - "SHA-256 with domain separation"
-    - "Explicit closed node schemas and fixed field order"
-    - "Mandatory validate_ast before encoding"
-    - "Iterative encoding"
-    - "SourceIdentifier and SourceSpan validation without digest inclusion"
-    - "Public API export"
-    - "Focused regression tests"
+    - "Explicit immutable source identity and source-location separation"
+    - "Non-mutating legacy AST adaptation without invented FunctionDecl metadata"
+    - "FunctionDecl name_span and parameter_spans canonical contract"
+    - "Source-order and span integrity validation"
+    - "Unified deterministic iterative AST validation"
+    - "Node, child, graph, cycle, and reuse validation"
+    - "Independent AST and parser resource accounting"
+    - "Boundary tests without increasing numeric ceilings"
+    - "Regression preservation of the existing ZIIF-01 fingerprint contract"
+    - "Requirement audit, gap analysis, verification matrix, and completion report"
   exclusions:
-    - "AST node or grammar changes"
-    - "Parser implementation or changes"
-    - "Semantic analysis implementation"
-    - "Runtime changes"
-    - "Optimizer or IR implementation"
-    - "Resource-limit changes"
-    - "Security-policy changes"
-    - "Dependency additions"
-    - "Python-Rust integration"
-    - "Changes to SECURITY.md"
-  previous_milestone:
-    id: "ZB-07"
-    status: "CLOSED_SCOPE_QUALIFIED"
+    - "SECURITY.md changes"
+    - "Grammar redesign"
+    - "Parser implementation redesign"
+    - "Runtime, Semantic Analysis, optimizer, or IR implementation"
+    - "Dependency changes"
+    - "Resource-limit increases"
+    - "Identity Registry or persistent global node identity implementation"
+    - "ZIIF-01 follow-on feature work"
+    - "Commit, push, merge, release, or deployment"
+  paused_milestone:
+    id: "ZIIF-01"
+    status: "PAUSED_UNTIL_ZB07_COMPLETION"
+    preserve_existing_implementation: true
+    preserve_fingerprint_v1_contract: true
+  previous_zb07_implementation:
     implementation_commit: "a6f3770f50dd5f7cb637cd7239220f07eecf6414"
-    merged_main_commit: "a62f4e904adfc9f9ae1e2d15b1d0d8e57fc5d676"
-    evidence: "docs/engineering/ZB-07_EVIDENCE.md"
-  evidence_ledger: "docs/engineering/ZIIF-01_EVIDENCE.md"
-  change_plan: "docs/engineering/ZIIF-01_CHANGE_PLAN.md"
+    historical_merged_main_commit: "a62f4e904adfc9f9ae1e2d15b1d0d8e57fc5d676"
+    historical_closure_is_not_reopened_completion: true
   scope_expansion_requires_owner_approval: true
 
 resource_limits:

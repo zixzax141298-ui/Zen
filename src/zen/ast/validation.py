@@ -195,6 +195,8 @@ def _children_for_node(
     node: Node,
     emit,
     max_direct_children: int,
+    *,
+    require_function_metadata: bool,
 ):
     """Return validated direct children, parameter count, and completeness."""
 
@@ -274,6 +276,7 @@ def _children_for_node(
                 "function name must be a string",
                 node,
             )
+            complete = False
 
         parameters = getattr(node, "parameters", None)
 
@@ -286,6 +289,14 @@ def _children_for_node(
             complete = False
         else:
             parameter_count = len(parameters)
+
+            if parameter_count > max_direct_children:
+                emit(
+                    "AST_DIRECT_CHILD_LIMIT_EXCEEDED",
+                    "function parameters exceed the direct-child limit",
+                    node,
+                )
+                complete = False
 
             if any(
                 type(item) is not str
@@ -301,8 +312,129 @@ def _children_for_node(
                 )
                 complete = False
 
+        name_span = getattr(node, "name_span", None)
+        parameter_spans = getattr(node, "parameter_spans", None)
+        body = getattr(node, "body", None)
+
+        if name_span is None and parameter_spans is None:
+            if require_function_metadata:
+                emit(
+                    "AST_FUNCTION_METADATA_MISSING",
+                    "canonical FunctionDecl requires name_span and parameter_spans",
+                    node,
+                )
+                complete = False
+
+        elif name_span is None or parameter_spans is None:
+            emit(
+                "AST_FUNCTION_METADATA_MISSING",
+                "FunctionDecl metadata must provide both name_span and parameter_spans",
+                node,
+            )
+            complete = False
+
+        else:
+            metadata_valid = True
+
+            if not isinstance(name_span, SourceSpan):
+                emit(
+                    "AST_FUNCTION_NAME_SPAN_INVALID",
+                    "function name_span must be a SourceSpan",
+                    node,
+                )
+                metadata_valid = False
+            else:
+                try:
+                    name_span.__post_init__()
+                except (TypeError, ValueError):
+                    emit(
+                        "AST_FUNCTION_NAME_SPAN_INVALID",
+                        "function name_span is malformed",
+                        node,
+                    )
+                    metadata_valid = False
+
+            if type(parameter_spans) is not tuple:
+                emit(
+                    "AST_FUNCTION_PARAMETER_SPANS_INVALID",
+                    "function parameter_spans must be a tuple",
+                    node,
+                )
+                metadata_valid = False
+            else:
+                if (
+                    type(parameters) is tuple
+                    and len(parameter_spans) != len(parameters)
+                ):
+                    emit(
+                        "AST_FUNCTION_PARAMETER_SPAN_COUNT_MISMATCH",
+                        "parameter_spans count must match parameters count",
+                        node,
+                    )
+                    metadata_valid = False
+
+                for index, item in enumerate(parameter_spans):
+                    if not isinstance(item, SourceSpan):
+                        emit(
+                            "AST_FUNCTION_PARAMETER_SPAN_INVALID",
+                            f"parameter_spans[{index}] must be a SourceSpan",
+                            node,
+                        )
+                        metadata_valid = False
+                        continue
+
+                    try:
+                        item.__post_init__()
+                    except (TypeError, ValueError):
+                        emit(
+                            "AST_FUNCTION_PARAMETER_SPAN_INVALID",
+                            f"parameter_spans[{index}] is malformed",
+                            node,
+                        )
+                        metadata_valid = False
+
+            if metadata_valid and isinstance(body, BlockStmt):
+                ordered_spans = (
+                    name_span,
+                    *parameter_spans,
+                    body.span,
+                )
+
+                previous_end = None
+
+                for item in ordered_spans:
+                    if not isinstance(item, SourceSpan):
+                        metadata_valid = False
+                        break
+
+                    if not node.span.contains(item):
+                        emit(
+                            "AST_FUNCTION_METADATA_OUT_OF_RANGE",
+                            "function metadata and body spans must be contained in the declaration span",
+                            node,
+                        )
+                        metadata_valid = False
+                        break
+
+                    if (
+                        previous_end is not None
+                        and item.start < previous_end
+                    ):
+                        emit(
+                            "AST_FUNCTION_METADATA_ORDER_INVALID",
+                            "function name, parameter, and body spans must be ordered and non-overlapping",
+                            node,
+                        )
+                        metadata_valid = False
+                        break
+
+                    previous_end = item.end
+
+            if not metadata_valid:
+                complete = False
+
         one(
-            getattr(node, "body", None),
+            body,
             BlockStmt,
             "body",
         )
@@ -496,6 +628,7 @@ def _validate_ast(
     limits: ASTValidationLimits,
     *,
     require_source_identity: bool,
+    require_function_metadata: bool,
 ) -> ASTValidationResult:
 
     diagnostics: list[Diagnostic] = []
@@ -695,6 +828,7 @@ def _validate_ast(
                 node,
                 emit,
                 limits.max_direct_children,
+                require_function_metadata=require_function_metadata,
             )
         )
 
@@ -765,6 +899,7 @@ def validate_ast(
         program,
         limits,
         require_source_identity=True,
+        require_function_metadata=True,
     )
 
 
