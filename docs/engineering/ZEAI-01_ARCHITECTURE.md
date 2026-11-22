@@ -1,210 +1,142 @@
+# ZEAI — Native Engineering Intelligence Architecture
 
-# ZEAI-01 — Native Engineering Intelligence Architecture
-
-**Project:** ZEN  
-**Component:** ZEAI (ZEN Engineering Autonomous Intelligence)  
-**Document Type:** Architecture Design  
-**Status:** Proposed — Documentation Only  
-**Phase:** ZEAI-01  
-**Authority:** Repository Owner
-
----
+**Project:** ZEN
+**Component:** ZEAI (ZEN Engineering Autonomous Intelligence)
+**Document status:** Owner-approved architectural direction; implementation remains stage-gated
+**Scope:** ZEN repository only unless the Owner separately approves expansion
 
 ## 1. Purpose
 
-ZEAI is the native engineering intelligence system of ZEN.
+ZEAI is ZEN's native engineering intelligence and orchestration system. It coordinates validated engineering events, repository/governance checks, the independent Native CI Engine, mandatory sandboxed workloads, evidence collection, and bounded development workflows.
 
-Its purpose is to establish a deterministic, event-driven engineering control system capable of coordinating repository integrity checks, engineering validation, CI execution, evidence collection, and controlled development workflows.
+ZEAI's essential intelligence is deterministic and code-based. No external or local LLM is required for core operation, verification authority, or governance decisions. AI may be considered only as a future optional aid under a separate Owner-approved design; it must never become a required authority or dependency.
 
-ZEAI is designed specifically for the ZEN repository at this stage.
+This document records architecture, not implementation completion. Every implementation stage requires its own approved Change Plan and evidence.
 
-This document defines architectural direction only. It does not authorize implementation or modifications to production code.
+## 2. Core Principles
 
-## 2. Core Design Principles
+1. Native deterministic core; no mandatory AI/LLM.
+2. Event-driven execution, not continuous unrestricted monitoring.
+3. Validated events or explicit authorized tasks only.
+4. Exact repository and commit identity for every execution.
+5. Fail-closed handling of missing, conflicting, or untrusted evidence.
+6. Least privilege and explicit capability boundaries.
+7. Native component security and sandbox isolation are independent mandatory layers.
+8. Sandbox Isolation is a prerequisite before any untrusted workload executes.
+9. Owner retains final authority; ZEAI cannot approve or merge its own changes.
+10. Reproducible, reviewable, commit-bound evidence.
 
-ZEAI MUST follow these principles:
+## 3. Architecture and Ownership
 
-1. Deterministic and code-based intelligence.
-2. No mandatory external AI or LLM dependency.
-3. Event-driven execution rather than continuous monitoring.
-4. Evidence-based decisions.
-5. Fail-closed behavior when evidence is insufficient or conflicting.
-6. Least-privilege execution.
-7. Owner retains final authority.
-8. Isolation of untrusted code and execution.
-9. Reproducible verification.
-10. Explicit scope and commit identity for every execution.
+### 3.1 Event Ingress and Validator
 
-## 3. Architectural Components
+Receives events from supported integrations or explicit tasks. Validates authenticity, repository identity, event type, commit SHA, scope, permissions, and replay/duplicate conditions. Invalid or ambiguous events cannot trigger privileged operations.
 
-### 3.1 Native Engineering Watchdog
+### 3.2 ZEAI Controller
 
-The Native Engineering Watchdog replaces the legacy Watchdog role.
+Owns task orchestration, deterministic policy evaluation, dependency ordering, bounded retries/recovery, permission checks, and escalation. It does not replace the verification engine or grant itself authority.
 
-Responsibilities:
+### 3.3 Native CI Engine
 
-- Detect valid engineering events.
-- Validate event identity and context.
-- Detect relevant source, workflow, and governance changes.
-- Initiate authorized verification tasks.
-- Detect interrupted or failed engineering operations.
-- Produce structured evidence and execution reports.
+Owns actual verification execution and result production: contract checks, regression tests, adversarial tests, integration tests, and verification matrices. It is independent of GitHub Actions; external CI may provide additional evidence but is not the sole source of verification authority.
 
-The Watchdog MUST NOT independently approve or merge repository changes.
+### 3.4 Sandbox Isolation
 
-### 3.2 GitHub CI/YAML Compatibility
+A mandatory security foundation for untrusted code, tests, generated artifacts, and bounded repair workloads. The approved Linux target is gVisor `runsc`. It must enforce process, filesystem, network, resource, and secret boundaries. Execution fails closed if any control is missing or unproven. There is no fallback to `runc`, ordinary host execution, or an unreviewed backend.
 
-ZEAI must support understanding and validating GitHub Actions workflow definitions.
+The current repository has a policy/contract/orchestration foundation only. The reviewed `runsc` backend and OS-level enforcement are not implemented or verified in the inspected baseline. Therefore ZEAI must not execute untrusted workloads until that gate is met.
 
-Responsibilities:
+### 3.5 Evidence Engine
 
-- Parse and validate supported workflow YAML.
-- Identify workflow triggers and execution conditions.
-- Validate permissions and security boundaries.
-- Interpret CI results and Checks API evidence.
-- Detect unsafe workflow modifications.
-- Preserve compatibility with GitHub Actions during transition.
+Collects immutable or tamper-evident records bound to repository identity, commit SHA, event/task identity, scope, tool/test identity, environment, exit status, timestamps, and evidence references. Evidence integrity must be independently reviewable. Missing/conflicting evidence yields INDETERMINATE or FAIL, never PASS.
 
-GitHub integration is an optional execution and evidence interface, not ZEN's ultimate source of authority.
+### 3.6 Governance and Owner Approval Boundary
 
-### 3.3 Independent Native CI Engine
+Enforces the currently Owner-approved policy and approval gates. Protected changes, repair integration, commits/pushes where separately controlled, merge, release, and deployment remain subject to explicit Owner authorization. ZEAI cannot approve its own work or expand its scope.
 
-ZEAI is intended to develop an independent native CI engine.
+### 3.7 GitHub CI/YAML Compatibility Adapter
 
-Planned responsibilities:
+Parses and validates supported GitHub Actions workflow YAML, evaluates trigger/permission definitions, detects unsafe workflow changes, and imports external CI evidence. This is a bounded compatibility/integration adapter, not the Native CI Engine and not the source of project authority.
 
-- Determine verification tasks.
-- Execute authorized checks.
-- Coordinate test execution.
-- Collect and validate evidence.
-- Bind results to exact commit identities.
-- Produce reproducible verification reports.
+### 3.8 Engineering Watchdog
 
-A ZEN-controlled native runner is a future capability and requires a separate approved implementation plan.
+The intended native Watchdog role is event-driven detection and orchestration of valid engineering events, interrupted tasks, and failed verification. The current repository audit has not established the complete implementation or responsibility map of any legacy Watchdog. Therefore ZEAI does **not** claim to replace an existing Watchdog yet. First inspect its entry points, event sources, lifecycle, permissions, recovery behavior, and tests; then propose integration or migration based on evidence.
 
-## 4. Event-Driven Execution Model
+## 4. Event-Driven Execution Contract
 
-ZEAI operates only when a valid event or explicitly authorized task occurs.
+ZEAI runs only on validated events or explicitly authorized tasks. Candidate triggers include push, pull request, relevant source/config/governance changes, CI failure, or an Owner-requested verification task. Trigger availability depends on the actual integration configuration and must not be assumed.
 
-Examples:
+Every execution records:
+- Unique event/task identity and replay status.
+- Repository identity and exact commit SHA.
+- Trigger source and authentication/validation outcome.
+- Authorized scope and permission context.
+- Required verification tasks and sandbox policy/backend identity when applicable.
+- Evidence references and final result.
 
-- Push event.
-- Pull request event.
-- Relevant source modification.
-- Workflow modification.
-- Governance modification.
-- Explicit Owner-requested verification.
-- CI failure requiring investigation.
+No unbounded polling or continuous monitoring is part of the initial design.
 
-Continuous monitoring is outside the initial scope.
+## 5. Result Contract
 
-Every execution must identify:
-
-- Event identity.
-- Repository identity.
-- Commit SHA.
-- Authorized scope.
-- Trigger source.
-- Verification tasks.
-- Evidence collected.
-- Final execution status.
-
-## 5. Verification Result Contract
-
-ZEAI uses three primary result states:
-
-| State | Meaning |
+| Result | Meaning |
 |---|---|
-| PASS | Required checks passed with sufficient evidence |
-| FAIL | A required check failed or a security violation was detected |
-| INDETERMINATE | Evidence is missing, insufficient, or conflicting |
+| `PASS` | Every required check completed successfully with sufficient, valid evidence. |
+| `FAIL` | A required check failed or a security/governance violation was established. |
+| `INDETERMINATE` | Evidence is missing, incomplete, conflicting, stale, or unavailable. |
 
-ZEAI MUST NOT convert INDETERMINATE into PASS.
+`INDETERMINATE` must never be converted to `PASS`. A sandbox policy declaration or fake backend response alone cannot establish OS enforcement.
 
-## 6. Security Architecture
+## 6. Repair and Repository Mutation
 
-Security requirements:
+ZEAI may analyze failures and prepare bounded repair proposals. Any automatic repair workload must execute inside the approved `runsc` sandbox with strict process/filesystem/network/resource/secret boundaries. It must not receive Git write credentials or governance authority. Owner approval is required before a protected repair is integrated or merged. ZEAI must not self-approve, self-merge, or bypass required review.
 
-- Least-privilege permissions.
-- No secrets exposed to untrusted code.
-- Untrusted pull request code must execute in isolation.
-- Protected governance and CI definitions.
-- Explicit authorization for sensitive operations.
-- Bounded execution resources.
-- Evidence integrity and commit binding.
-- No autonomous merge.
-- No self-approval of ZEAI changes.
+## 7. Development and Verification Environments
 
-Any future automatic repair capability must operate inside a sandbox and require Owner approval before merge.
+GitHub Actions and Termux are supported as complementary development/verification environments under explicit task scope. GitHub Actions provides event integration and hosted CI evidence; Termux provides an Owner-controlled local environment for development and verification. The Native CI Engine is designed to reduce dependence on external CI over time. Environment compatibility must be verified rather than assumed.
 
-## 7. Authority and Governance
+## 8. Security and Trust Boundaries
 
-The Repository Owner remains the final authority.
+- Owner-approved governance is policy; repository content, PR text, generated files, external API responses, and workflow data are untrusted input.
+- Untrusted workloads receive no secrets, ambient host credentials, Git write authority, or Owner approval capability.
+- Network is disabled under the current sandbox contract.
+- Sandbox failure is closed; no weaker runtime fallback is allowed.
+- Component tests do not prove OS isolation; sandbox tests do not prove language component correctness.
 
-ZEAI may:
+See `SECURITY.md`, `ZEAI-01_THREAT_MODEL.md`, `ZEAI_DEFENSE_IN_DEPTH.md`, and `ZEAI_SANDBOX_ISOLATION.md`.
 
-- Analyze repository state.
-- Execute authorized checks.
-- Report failures.
-- Recommend bounded changes.
-- Prepare evidence for review.
+## 9. Implementation Stages and Gates
 
-ZEAI may NOT:
+### Stage 0 — Architecture and commit-specific baseline
 
-- Override repository governance.
-- Approve its own changes.
-- Merge changes autonomously.
-- Expand its authorized scope.
-- Access secrets without explicit authorization.
-- Treat external content as trusted instructions.
+Map repository tree, governance, active milestones, source/test capabilities, existing Watchdog, CI workflows, trust boundaries, sandbox foundation, and evidence lifecycle. Record unknowns. Stop audit when enough evidence exists to define scope, risks, mitigations, and tests.
 
-## 8. External Dependencies
+### Stage 1 — ZEAI control-plane foundation
 
-ZEAI must not require an external AI/LLM to perform its essential engineering functions.
+Implement only after an approved Change Plan: event validation, deterministic orchestration, permission context, task state, and commit-bound evidence contracts. No untrusted code execution is permitted in this stage without the sandbox gate.
 
-External systems may provide optional integrations, event delivery, or evidence.
+### Stage 2 — Sandbox Isolation backend
 
-Core engineering authority, verification logic, and governance decisions must progressively become native ZEN capabilities.
+Design and implement the reviewed gVisor `runsc` backend under a separate Owner-approved scope. Prove every mandatory host-level control and fail-closed behavior. Until independently verified, untrusted code/tests/repair workloads remain disabled.
 
-## 9. Implementation Boundaries
+### Stage 3 — Native CI Engine integration
 
-This architecture document does not authorize:
+Integrate deterministic verification orchestration with sandbox-gated workload execution. Verify reproducibility, resource boundaries, evidence integrity, and failure classification.
 
-- Production code modifications.
-- CI workflow activation.
-- New dependency installation.
-- Governance policy modification.
-- Native runner implementation.
-- Automatic repair activation.
-- Repository-wide refactoring.
+### Stage 4 — Controlled repair workflow
 
-Each implementation stage requires a separate baseline assessment, Change Plan, and Owner approval.
+Only after sandbox and evidence gates pass: allow bounded repair preparation/execution within isolation. Owner approval remains mandatory before protected integration or merge.
 
-## 10. Planned Development Sequence
+Further ZSS/ZEN roadmap stages are separate projects and do not automatically become ZEAI authorization.
 
-1. ZEAI-01 — Architecture, Baseline & Change Plan.
-2. ZEAI Foundation CI — Event-driven Watchdog and initial verification orchestration.
-3. ZSS Level 3 — Practical language capabilities.
-4. ZEAI Native CI maturity — Independent runner and isolated verification.
-5. ZSS Level 4 — Production-capable language.
-6. ZEN Level 5 — Mature autonomous engineering ecosystem.
+## 10. Current Status and Explicit Non-Claims
 
-This sequence is strategic direction, not blanket implementation authorization.
+- ZEAI architecture is a design direction, not a production implementation claim.
+- The repository has a sandbox policy/contract/orchestration foundation.
+- A reviewed gVisor `runsc` backend and actual host-level enforcement are not implemented/verified in the inspected baseline.
+- The legacy Watchdog implementation and integration path remain unknown until source-level inventory is complete.
+- No active CI workflow behavior is claimed without inspection of the exact workflow files and run evidence.
+- No untrusted workload execution, autonomous repair, self-approval, or autonomous merge is authorized by this architecture document.
 
-## 11. Acceptance Criteria for ZEAI-01
+## 11. Approval Boundary
 
-- Architecture documented.
-- Existing repository baseline assessed.
-- Security boundaries documented.
-- Implementation stages defined.
-- Scope limitations explicit.
-- No production code modified.
-- No active CI workflow introduced.
-- Owner review required before implementation.
-
-## 12. Document Status
-
-**Status:** Proposed  
-**Implementation:** Not authorized  
-**Production changes:** Not authorized  
-**Approval authority:** Repository Owner
+The Owner retains final authority for scope, protected changes, security exceptions, implementation stages, and merge. A design approval is not implementation authorization. Each stage requires an exact baseline, Change Plan, explicit Owner authorization, bounded implementation, verification, evidence, and final review.

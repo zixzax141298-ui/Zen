@@ -1,233 +1,85 @@
+# ZEAI — Security Threat Model
 
-# ZEAI-01 — Security Threat Model
-
-**Project:** ZEN  
-**Component:** ZEAI  
-**Document Type:** Security Threat Model  
-**Status:** Proposed — Owner Review Required  
-**Classification:** Engineering Security Design  
-**Implementation Authorization:** Not Granted
-
----
+**Status:** Owner-approved design requirements; implementation and enforcement remain separately unverified
+**Scope:** ZEN repository ZEAI architecture
 
 ## 1. Purpose
 
-This document defines the preliminary security threat model for ZEAI.
-
-ZEAI is intended to become the native engineering intelligence system of ZEN.
-
-Because ZEAI may eventually inspect repositories, process engineering events, execute verification tasks, and coordinate controlled development operations, its security architecture must be established before implementation.
-
-This document defines design requirements only.
-
-It does not authorize production implementation.
+Identify realistic threats to ZEAI's event processing, orchestration, Native CI Engine, sandbox, evidence, repository, and Owner approval boundaries. This is a design threat model, not a penetration test or certification.
 
 ## 2. Security Objectives
 
-ZEAI must preserve:
+Preserve repository and governance integrity, source integrity, secret confidentiality, verification evidence integrity, execution isolation, Owner authority, and availability of essential engineering workflows.
 
-1. Repository integrity.
-2. Governance integrity.
-3. Source code integrity.
-4. Secret confidentiality.
-5. Verification evidence integrity.
-6. Execution isolation.
-7. Owner authority.
-8. Availability of essential engineering workflows.
+## 3. Trust Domains
 
-## 3. Threat Actors
+1. **Owner governance domain:** Owner-approved policies and explicit authorization. Highest project authority.
+2. **ZEAI control domain:** event validation, orchestration, policy evaluation, and evidence coordination. Limited by Owner-approved policy.
+3. **Native CI domain:** deterministic verification logic and result production.
+4. **Sandbox workload domain:** untrusted source, tests, generated code/artifacts, and repair tasks. No secrets or privileged repository authority.
+5. **Repository data domain:** source, tests, docs, workflow files, comments, and metadata. Data is not privileged instruction.
+6. **External integration domain:** GitHub events, APIs, CI results, package metadata, and other external responses. Untrusted until validated.
 
-Potential threat sources include:
+No agent or subsystem may elevate itself above the Owner.
 
-- Malicious external contributors.
-- Compromised dependency packages.
-- Malicious pull request content.
-- Forged or replayed events.
-- Compromised credentials.
-- Malicious workflow modifications.
-- Incorrect internal execution logic.
-- Accidental operator actions.
+## 4. Threat Register
 
-Threat classification must be based on evidence and realistic attack paths, not assumptions about an individual.
-
-## 4. Trust Boundaries
-
-ZEAI must distinguish these trust domains:
-
-### 4.1 Trusted Governance Domain
-
-Contains repository governance and explicitly authorized policies.
-
-Protection requirements:
-
-- Restricted modification.
-- Explicit review.
-- Version-controlled history.
-- Owner-controlled authority.
-
-### 4.2 Repository Source Domain
-
-Contains application source, tests, documentation, and configuration.
-
-Repository content must not automatically be treated as trusted instructions.
-
-### 4.3 External Event Domain
-
-Contains incoming GitHub events and external integration data.
-
-All external events must be validated before they trigger privileged operations.
-
-### 4.4 Untrusted Execution Domain
-
-Contains code from untrusted branches, pull requests, and external contributions.
-
-This domain must be isolated from secrets and privileged repository operations.
-
-### 4.5 ZEAI Control Domain
-
-Contains event validation, orchestration, verification policy, and evidence handling.
-
-Its authority must be restricted by explicit policy and Owner approval.
-
-## 5. Threat Register
-
-| ID | Threat | Potential Impact | Required Mitigation |
+| ID | Threat | Impact | Required mitigation |
 |---|---|---|---|
-| T-01 | Forged event | Unauthorized execution | Event authentication and validation |
-| T-02 | Replay attack | Repeated privileged actions | Event identity and replay protection |
-| T-03 | Malicious PR code | Runner compromise | Isolated execution |
-| T-04 | Secret exposure | Credential compromise | Secret isolation and least privilege |
-| T-05 | Workflow tampering | Unauthorized CI behavior | Protected workflow review |
-| T-06 | Governance tampering | Loss of policy integrity | Owner-controlled protection |
-| T-07 | Evidence manipulation | False PASS result | Commit-bound evidence integrity |
-| T-08 | Dependency compromise | Supply-chain compromise | Dependency verification |
-| T-09 | Resource exhaustion | CI disruption | Execution limits and quotas |
-| T-10 | Unauthorized repair | Source integrity compromise | Sandbox and Owner approval |
-| T-11 | Autonomous merge | Unreviewed repository changes | Prohibit autonomous merge |
-| T-12 | Incorrect result classification | Unsafe acceptance | Fail-closed result contract |
+| T-01 | Forged event or repository identity | Unauthorized task execution | Authenticate and validate event, repository, ref, commit, scope, and permissions |
+| T-02 | Event replay or duplicate delivery | Repeated side effects | Stable event IDs, replay detection, idempotent task handling |
+| T-03 | Malicious PR/source/test code | Host or runner compromise | Mandatory gVisor `runsc` sandbox; no untrusted host execution |
+| T-04 | Sandbox runtime unavailable | Unsafe fallback execution | Fail closed; no `runc` or host fallback |
+| T-05 | Sandbox escape or incomplete boundary | Host/workspace compromise | Host-level control evidence, adversarial tests, independent review, least privilege |
+| T-06 | Filesystem traversal or mount leakage | Host/repository data exposure | Workspace-scoped filesystem, path validation, restricted mounts |
+| T-07 | Network egress | Data exfiltration or command-and-control | Network disabled by current contract; reject network-enabled policy |
+| T-08 | Resource exhaustion | Host/CI denial of service | Enforced CPU, memory, wall-clock, and output limits |
+| T-09 | Secret/credential inheritance | Credential compromise | Empty-by-default environment, deny credential-like variables, no inherited Git/CI/cloud/SSH secrets |
+| T-10 | Workflow or governance tampering | Unauthorized privileged behavior | Protected review, least privilege, Owner approval |
+| T-11 | Evidence tampering or stale evidence | False PASS | Commit-bound, scope-bound, integrity-protected evidence; stale/missing evidence is INDETERMINATE |
+| T-12 | Compromised dependency | Supply-chain compromise | Provenance/vulnerability/license review and approved dependency changes |
+| T-13 | Unbounded or unauthorized repair | Source integrity loss | Bounded repair in sandbox; Owner approval before integration/merge |
+| T-14 | ZEAI self-approval or self-merge | Loss of Owner control | Prohibit self-approval/merge; Owner remains final authority |
+| T-15 | Prompt/instruction injection in repository or external data | Policy override | Treat content as data; only Owner-approved governance defines authority |
+| T-16 | Incorrect result classification | Unsafe acceptance | `PASS`/`FAIL`/`INDETERMINATE`; never promote uncertainty to PASS |
+| T-17 | Watchdog migration assumption | Missed events or duplicate authority | Inspect existing Watchdog before claiming replacement or migration |
 
-## 6. Event Security
+## 5. Event Security
 
-Every event must be checked for:
+Before a privileged task, validate event authenticity, repository identity, event type, exact commit SHA, authorized scope, permission context, replay/duplicate status, and allowed task type. Invalid, stale, conflicting, or ambiguous events must not initiate privileged work.
 
-- Authenticity.
-- Expected repository identity.
-- Event type.
-- Commit identity.
-- Authorized scope.
-- Replay or duplicate conditions.
-- Permission context.
+## 6. Mandatory Sandbox Security
 
-Invalid or ambiguous events must not initiate privileged execution.
+The approved Linux runtime target is gVisor `runsc`. It must enforce, for the exact host and policy:
 
-## 7. Execution Isolation
+- Process isolation and lifecycle/termination controls.
+- Filesystem isolation to the declared workspace.
+- Network isolation; network-enabled policies are rejected by the current contract.
+- CPU, memory, wall-clock, and output limits.
+- Secret isolation, with no inherited environment or ambient credentials.
 
-Untrusted code must not execute in a privileged environment.
+If `runsc` is unavailable or any control/evidence is missing, execution is rejected. There is no fallback to `runc`, ordinary host execution, or an unreviewed backend. Fake-backend tests do not prove OS-level enforcement.
 
-Future execution architecture must provide:
+## 7. Secret and Permission Security
 
-- Isolated execution environments.
-- Restricted filesystem access.
-- Restricted network access.
-- Resource limits.
-- Time limits.
-- Process termination controls.
-- No access to repository secrets.
-- No privileged host credentials.
+Untrusted workloads receive no repository secrets, Git write credentials, CI tokens, cloud keys, SSH credentials, or Owner approval capabilities. Read/write permissions must be separated and minimized. Sensitive access must be auditable; compromised credentials must be revoked/rotated.
 
-The exact sandbox implementation requires a separate technical design and security review.
+## 8. Evidence Integrity
 
-## 8. Secret Protection
+Every result binds repository identity, commit SHA, event/task identity, authorized scope, sandbox/backend policy when applicable, tool/test identity, execution environment, exit result, and evidence references. Missing, conflicting, stale, or unverifiable evidence yields `INDETERMINATE` or `FAIL`, never `PASS`.
 
-Mandatory requirements:
+## 9. Failure and Recovery
 
-1. Never store secrets in source code.
-2. Never expose secrets to untrusted pull requests.
-3. Never print secrets in logs.
-4. Apply least-privilege credentials.
-5. Restrict credential lifetime where possible.
-6. Separate read-only and write permissions.
-7. Rotate compromised credentials.
-8. Audit sensitive access.
+Address interrupted execution, partial task state, corrupted workspace, failed verification, runner compromise, evidence loss, and credential exposure. Terminate safely, preserve evidence, clean temporary state without deleting unrelated data, and escalate to Owner. Recovery must not bypass approval gates.
 
-## 9. Evidence Integrity
+## 10. Verification Requirements
 
-Every verification result must be associated with:
+Before enabling untrusted workload execution, verify actual gVisor `runsc` operation on the target host, process containment, filesystem boundary, network denial, resource enforcement, secret isolation, fail-closed startup/runtime behavior, and adversarial cases. Independently verify Native Component Security. Neither layer substitutes for the other.
 
-- Repository identity.
-- Exact commit SHA.
-- Event identity.
-- Execution scope.
-- Tool and test identity.
-- Execution outcome.
-- Evidence references.
+## 11. Residual Risk and Status
 
-Missing, conflicting, or unverifiable evidence must produce INDETERMINATE or FAIL, never PASS.
+The sandbox orchestration foundation exists, but the reviewed gVisor backend and OS enforcement are not implemented/verified in the inspected baseline. This is a blocking prerequisite for untrusted workload execution. Residual risks must be recorded and accepted by the Owner before production deployment; critical unresolved risks block the affected stage.
 
-## 10. ZEAI Authority Restrictions
+## 12. Authorization
 
-ZEAI must never:
-
-- Approve its own changes.
-- Merge its own changes.
-- Modify protected governance without authorization.
-- Expand its own permissions.
-- Bypass required security checks.
-- Treat untrusted repository content as privileged instructions.
-- Execute unbounded repairs.
-- Claim successful verification without evidence.
-
-The Repository Owner retains final authority.
-
-## 11. Failure and Recovery Security
-
-Future implementation must address:
-
-- Interrupted execution.
-- Corrupted temporary state.
-- Failed verification.
-- Runner compromise.
-- Evidence loss.
-- Credential exposure.
-- Partial repair operations.
-
-Recovery procedures must preserve repository integrity and must not bypass approval gates.
-
-## 12. Security Validation Requirements
-
-Before implementation approval, the design must be reviewed for:
-
-- Threat coverage.
-- Trust boundary completeness.
-- Permission minimization.
-- Event validation.
-- Replay protection.
-- Secret isolation.
-- Sandbox requirements.
-- Evidence integrity.
-- Failure handling.
-- Recovery procedures.
-
-A documented threat model is not proof that these controls have been implemented or tested.
-
-## 13. Residual Risks
-
-Some risks cannot be fully eliminated by architecture documentation alone.
-
-Residual risks must be recorded, assessed, and explicitly accepted by the appropriate authority before production deployment.
-
-Critical unresolved security risks must block the affected implementation stage.
-
-## 14. Authorization Boundary
-
-**Threat model status:** Proposed  
-**Security implementation:** Not authorized  
-**Production changes:** Not authorized  
-**Security exceptions:** Not authorized  
-**Autonomous repair:** Not authorized  
-**Autonomous merge:** Prohibited  
-**Final authority:** Repository Owner
-
----
-
-**End of ZEAI-01 Security Threat Model**
+This threat model defines requirements only. It does not authorize production implementation, sandbox backend deployment, autonomous repair, self-approval, or merge. The Owner retains final authority.
