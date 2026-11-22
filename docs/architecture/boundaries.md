@@ -28,3 +28,4 @@ It does not imply that components marked as future work are implemented.
 Source spans are half-open: start is inclusive and end is exclusive. A child
 must be contained by its parent. Siblings are ordered and non-overlapping;
 `previous.end == next.start` is valid adjacency.
+
