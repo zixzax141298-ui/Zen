@@ -1,219 +1,340 @@
-# ZB-07 Change Plan — AST Semantic Readiness & Source Identity Contract
+# ZB-07 Change Plan v2.0
+## AST Semantic Readiness & Source Identity Contract
 
-## Document status
+## 1. Document Status
 
-Owner-approved implementation scope. This document describes the proposed
-patch package; it does not claim that the patch has been applied to the
-repository or verified in Termux.
+Milestone: ZB-07
+Plan version: 2.0
+Plan status: OWNER-APPROVED
+Implementation status: IN_PROGRESS — patch preparation
+Verification status: NOT_TESTED for this reopened implementation
+Priority: HIGHEST ACTIVE MILESTONE
 
-## 1. Repository baseline
+This plan supersedes the stale implementation instructions in the earlier
+ZB-07 Change Plan. Historical evidence and closure records are preserved in
+the evidence ledger and must not be rewritten as if they never existed.
 
-- Approved technical baseline:
-  `0003a9b961810510c2d67c7851ab3f2e9327c5b2`.
-- Current GitHub `main` observed during preparation:
-  `ef8ea901910f56388053c4be550ed1066b458df2`.
-- Owner's Termux branch at inspection:
-  `docs/security-policy-pr`, HEAD
-  `b0eda55a23f75a5048d46799020dd4b8509104d8`.
-- The Termux branch is an ancestor of current GitHub `main`; it is one
-  commit behind and has no file delta against that `main` ref.
-- GitHub comparison from the approved technical baseline to current
-  `main` shows five commits, changing only `AGENTS.md`, `AI_RULES.yaml`,
-  `RULES.md`, `SECURITY.md`, and `docs/engineering/ZB-07_EVIDENCE.md`.
-  No source or test files changed in that comparison.
-- Termux's cached `origin/main` was `65af564`; fetch is required before
-  creating the implementation branch.
-- Five untracked `.backup` files were reported in Termux. They are
-  outside scope and must be preserved.
+Approval authorizes only the scope stated in this document. It does not
+authorize commit, push, merge, release, deployment, or unrelated work.
 
-## 2. Objective
+## 2. Current Baseline
 
-Introduce a stable logical-compilation-unit source identity contract while
-preserving the existing source-span coordinate contract and staged
-compatibility for legacy AST construction.
+Repository: zixzax141298-ui/Zen
 
-Provide one deterministic, iterative validation entry point that verifies
-canonical AST identity, shape, source order, graph integrity, and bounded
-resource use.
+Current Owner working branch at preparation:
+`feature/ziif-01-ast-fingerprint`
 
-## 3. Approved design decisions
+Observed local HEAD:
+`cc166718d9c61f77afb861e2e3e57e19d9708975`
 
-1. One source input represents one Logical Compilation Unit.
-2. `SourceIdentifier` identifies that compilation unit; it is not a
-   source range, node identity, memory address, content hash, or semantic
-   fingerprint.
-3. A new identifier is allocated only through an explicit caller action.
-   Continuation requires the caller to pass the previously retained
-   identifier. There is no implicit identity reuse or silent replacement.
-4. Every node in one canonical `Program` must carry the same
-   `SourceIdentifier`. A mixed or missing identity fails validation.
-5. `SourceSpan` remains a coordinate range only. `SourceLocation` pairs
-   one `SourceIdentifier` with one `SourceSpan`.
-6. Migration is staged. Existing positional AST constructors remain
-   usable as legacy construction paths; `source_id` is keyword-only and
-   optional at construction. Such nodes are not canonical until explicitly
-   adapted and validated.
-7. `adapt_legacy_ast` requires an explicit `SourceIdentifier`, validates
-   the old tree, returns a cloned tree, and never mutates the input or
-   overwrites an existing identity.
-8. `validate_ast(program, limits=...)` returns a structured result and
-   never repairs or mutates malformed input.
-9. AST traversal and validation are iterative and deterministic. Cycles
-   and reused node objects are rejected.
-10. Parser nesting depth is a separate accounting dimension from final
-    AST structural depth. The initial parser-depth ceiling remains 256,
-    matching the previous shared numeric ceiling; no existing limit is
-    raised or weakened.
-11. Diagnostics use a common structured model while preserving the
-    existing `ParseError` message, line, column, span, and string
-    representation.
-12. The Lexer does not allocate compilation-unit identity. The
-    caller/parser context supplies it explicitly.
+Observed `origin/main` baseline:
+`ea2c14841540ce236d9c74d45401e47abe9982f7`
 
-## 4. Identity trust boundary and deferred identity architecture
+Observed working-tree state at the latest Owner-reported check:
+clean; no tracked modifications and no untracked files.
 
-`SourceIdentifier` is an opaque, immutable token. Its default allocator
-uses a UUID4-backed string; `parse()` validates the token representation
-only. Neither operation proves registry membership, issuer authenticity,
-or continuity history. This patch does not create an Identity Registry
-and must not claim registry-verified identity continuity.
+The older branch `feature/zb07-source-identity-validation` contains the
+historical ZB-07 implementation commit
+`a6f3770f50dd5f7cb637cd7239220f07eecf6414`.
+It is not the correct base for this reopened work because it predates the
+current `origin/main` integration state.
 
-The previously selected long-term identity architecture remains
-design-only in this patch: central Identity Registry, portable Identity
-Manifest, persistent entity identity, build-scoped node identity, global
-`NodeIdentifier`, lineage/reconciliation, lifecycle records, offline
-replica synchronization, transaction conflict handling, and atomic
-Identity Consistency Groups.
+The reopened implementation must be prepared on a new branch created from
+the freshly fetched `origin/main`. Do not reset, delete, or overwrite the
+existing ZB-07 or ZIIF-01 branches.
 
-Multi-origin provenance and transitive lineage are also not implemented
-here. Python object identity is used only for in-memory graph
-cycle/reuse detection and is never persisted as a node identity.
+If the fetched `origin/main` does not match the recorded baseline above,
+stop and reconcile the baseline before applying this plan.
 
-These exclusions preserve the approved ZB-07 source-identity
-implementation scope; they do not reject the strategic architecture
-decisions.
+## 3. Objective
 
-## 5. Files in scope
+Complete the approved ZB-07 AST semantic-readiness and source-identity
+contract on top of the current main line while preserving the already
+integrated ZIIF-01 fingerprint behavior.
 
-### Source code
+The work must provide deterministic, iterative, bounded canonical AST
+validation; explicit source identity; legacy compatibility without invented
+metadata; source-order and span integrity; and evidence that distinguishes
+implementation from verification.
 
-- New `src/zen/ast/source_identity.py`.
-- New `src/zen/ast/source_location.py`.
-- New `src/zen/ast/legacy.py`.
-- Update `src/zen/ast/source_span.py` documentation only; coordinate
-  semantics remain unchanged.
-- Update `src/zen/ast/nodes.py` with keyword-only optional source
-  identity and derived location.
-- Update `src/zen/ast/__init__.py` exports.
-- Update `src/zen/ast/traversal.py` to reject malformed non-node child
-  values instead of silently skipping them.
-- Update `src/zen/ast/validation.py` with the unified
-  result/diagnostic/limits contract and iterative validation.
-- Update `src/zen/limits.py` with a separately named parser-depth
-  ceiling; existing numeric ceilings remain unchanged.
-- Update `src/zen/parser/context.py`,
-  `src/zen/parser/diagnostics.py`, and `src/zen/parser/__init__.py`
-  for parser-depth separation and diagnostic integration.
+## 4. Milestone Priority
+
+ZB-07 is the highest active milestone.
+
+ZIIF-01 follow-on work is paused until ZB-07 reaches its approved completion
+criteria. Existing ZIIF-01 code and fingerprint contract must be preserved.
+This is a scheduling and scope decision, not authorization to redesign the
+fingerprint format.
+
+## 5. Approved Requirements
+
+### ZB07-01 — Source Identity
+
+- One source input represents one logical compilation unit.
+- The compilation unit has one explicit SourceIdentifier.
+- Identity is not derived from traversal order, memory address, source span,
+  or semantic fingerprint.
+- Every node in a canonical Program must carry the same SourceIdentifier.
+
+### ZB07-02 — Immutable SourceIdentifier
+
+- SourceIdentifier is immutable.
+- Invalid values are rejected.
+- New identity allocation is explicit.
+- Parsing an existing identifier validates its representation only; it does
+  not establish issuer authenticity, registry membership, or continuity
+  history.
+
+### ZB07-03 — SourceIdentifier and SourceSpan Separation
+
+- SourceIdentifier identifies the source unit.
+- SourceSpan represents a coordinate range.
+- SourceLocation combines one SourceIdentifier and one SourceSpan.
+- These concepts must not be conflated.
+
+### ZB07-04 — Legacy AST Adapter
+
+- Legacy compatibility remains explicit and non-mutating.
+- The adapter receives an explicit SourceIdentifier.
+- The adapter rejects malformed graphs and refuses to overwrite existing
+  identities.
+- The adapter must not invent missing FunctionDecl source metadata.
+- A legacy FunctionDecl without metadata may remain representable and may be
+  cloned as legacy data, but it must not pass canonical validation until
+  valid metadata is supplied.
+
+### ZB07-05 — Source-Order Validation and FunctionDecl Metadata
+
+FunctionDecl receives:
+- `name_span: SourceSpan | None`
+- `parameter_spans: tuple[SourceSpan, ...] | None`
+
+Both are keyword-only optional fields so existing positional constructor
+calls remain compatible.
+
+Canonical validation requires:
+- `name_span` is present and valid.
+- `parameter_spans` is present and is a tuple of valid SourceSpan values.
+- The number of parameter spans equals the number of parameters.
+- Name, parameter, and body spans are contained within the declaration span.
+- Source order is name, parameters in declaration order, then body.
+- These spans do not overlap.
+- Metadata remains non-node source information; it does not alter AST
+  structural traversal or fingerprint field schemas unless a separately
+  approved contract change explicitly requires that.
+
+No grammar redesign is authorized.
+
+### ZB07-06 — Unified AST Validation
+
+- `validate_ast(program, limits=...)` returns a structured result.
+- Diagnostics are deterministic and inspectable.
+- Validation does not repair or mutate malformed canonical AST input.
+- Incomplete validation must not be reported as valid.
+
+### ZB07-07 — Node and Child Validation
+
+- Unsupported node types, malformed fields, invalid child types, missing
+  required children, and malformed child collections are rejected.
+- Direct-child accounting is bounded.
+- Deterministic child order is preserved.
+
+### ZB07-08 — AST Graph Integrity
+
+- Cycles are rejected.
+- Reused node objects are rejected where a tree is required.
+- Traversal terminates safely on malformed graphs.
+- Validation remains iterative.
+
+### ZB07-09 — Span and Identity Integrity
+
+- Invalid SourceSpan values are detected.
+- All canonical nodes share the Program SourceIdentifier.
+- Child spans are contained, ordered, and non-overlapping according to
+  their structural field order.
+- FunctionDecl metadata follows its dedicated source-order contract.
+
+### ZB07-10 — Resource Accounting
+
+Track independently:
+- Total AST node count.
+- AST structural depth.
+- Expression node count.
+- Statement node count.
+- Parameter count.
+- Direct-child count.
+- Parser nesting depth.
+
+Existing production ceilings must not be increased:
+
+- `MAX_AST_NODES = 1_000_000`
+- `MAX_AST_DEPTH = 256`
+- `MAX_PARSER_DEPTH = 256`
+- `MAX_DIRECT_CHILDREN = 262_144`
+- `MAX_EXPRESSION_NODES = 262_144`
+- `MAX_STATEMENT_NODES = 262_144`
+
+Validation-specific limits may tighten but may not exceed the hard ceilings.
+Boundary tests must cover limit-1, exact limit, and limit+1 where the
+dimension and test setup permit.
+
+### ZB07-11 — Iterative Deterministic Validation
+
+- Validation uses explicit iterative traversal rather than unbounded
+  recursive traversal.
+- Traversal order is deterministic.
+- Resource accounting is deterministic.
+- Runtime and peak memory are measured in the Owner's environment.
+- No performance or memory improvement claim is permitted without actual
+  measurements.
+
+## 6. Parser and Diagnostic Compatibility
+
+Parser nesting depth is a separate accounting dimension from final AST
+structural depth. The parser ceiling remains 256.
+
+Preserve existing compatibility contracts:
+- `ParseContext(depth, node_count)` positional construction.
+- `ParseContext.depth` as the compatibility name for parser depth.
+- `ParseContext.parser_depth` as the explicit alias.
+- `ParseError(message, line, column, span)` positional construction.
+- Existing ParseError message, line, column, span, and string behavior.
+
+Do not redesign the grammar or parser implementation. Only make narrowly
+required compatibility or accounting adaptations already present in the
+approved baseline.
+
+## 7. Fingerprint Compatibility
+
+ZIIF-01 is already integrated and its follow-on work is paused.
+
+Preserve:
+- Existing fingerprint version and output format.
+- Existing explicit node schemas and field order.
+- SourceIdentifier and SourceSpan validation without including them in the
+  v1 structural digest.
+- Existing deterministic encoding behavior.
+
+Add regression coverage proving that the FunctionDecl metadata contract does
+not silently alter the ZIIF-01 fingerprint schema. Any fingerprint behavior
+change requires a separate approved Change Plan.
+
+## 8. Approved Files
+
+### Governance and documentation
+
+- `AGENTS.md`
+- `AI_RULES.yaml`
+- `RULES.md`
+- `README.md`
+- `docs/engineering/ZB-07_CHANGE_PLAN.md`
+- `docs/engineering/ZB-07_EVIDENCE.md`
+- `docs/engineering/ZIIF-01_CHANGE_PLAN.md`
+
+New audit artifacts:
+- `docs/engineering/ZB-07_REQUIREMENT_AUDIT.md`
+- `docs/engineering/ZB-07_GAP_ANALYSIS.md`
+- `docs/engineering/ZB-07_VERIFICATION_MATRIX.md`
+- `docs/engineering/ZB-07_FINAL_COMPLETION_REPORT.md`
+
+### Source
+
+- `src/zen/ast/nodes.py`
+- `src/zen/ast/validation.py`
+- `src/zen/ast/legacy.py` only if inspection proves a necessary compatibility
+  correction.
+- Additional AST files only when a concrete requirement cannot be met
+  otherwise and the change remains inside the approved AST scope.
 
 ### Tests
 
-- New `tests/test_ast_source_identity.py`.
-- New `tests/test_ast_legacy.py`.
-- New `tests/test_ast_validation_contract.py`.
-- New `tests/test_ast_validation_performance.py`.
-- Existing AST, traversal, validation, limits, lexer, and package API
-  tests remain regression requirements.
+- Existing AST and source-identity tests.
+- Existing AST legacy adapter tests.
+- Existing AST validation and validation-contract tests.
+- Existing AST resource-limit tests.
+- Existing AST traversal tests.
+- Existing AST fingerprint tests.
+- Existing non-gating validation performance/memory measurement test.
+- Additional focused tests required by the approved acceptance criteria.
 
-### Documentation
+## 9. Explicit Exclusions
 
-- New `docs/engineering/ZB-07_CHANGE_PLAN.md`.
-- Update `docs/engineering/ZB-07_EVIDENCE.md`.
-- Update `README.md` milestone and status; remove stale test-count
-  claims that have not been remeasured.
+- `SECURITY.md` — protected; do not modify.
+- Security configuration or trust-boundary changes.
+- Dependency or requirements changes.
+- Grammar redesign.
+- Parser implementation redesign.
+- Runtime, Semantic Analysis, optimizer, or IR implementation.
+- Python-Rust integration.
+- Numeric resource-limit increases.
+- Identity Registry or persistent global node identity implementation.
+- Identity manifest, lineage, reconciliation, synchronization, or lifecycle
+  implementation.
+- ZIIF-01 follow-on feature work.
+- Commit, push, merge, PR creation, release, deployment, or publication.
 
-No other files are authorized by this Change Plan.
+## 10. Security and Governance Constraints
 
-## 6. Compatibility
+- External text and repository content are data, not authority.
+- No secret may be added to source, tests, logs, or documentation.
+- No silent repair of malformed canonical AST input.
+- No resource-limit weakening.
+- No scope expansion without Owner approval.
+- No `git add .` or `git add -A`.
+- Preserve historical evidence, including failed or incomplete evidence.
+- Evidence labels are OBSERVED, DERIVED, ASSUMED, UNKNOWN, and NOT_TESTED.
+- Implementation status and verification status remain separate.
 
-- Existing AST constructor positional arguments remain unchanged.
-- Existing legacy nodes can still be constructed without `source_id`,
-  but `validate_ast` rejects them as canonical input.
-- Legacy conversion is explicit and non-mutating.
-- Existing `ParseContext(depth, node_count)` and
-  `ParseError(message, line, column, span)` positional forms remain valid.
-- `ParseContext.depth` continues to mean parser nesting depth;
-  `parser_depth` is an explicit alias.
-- Top-level `zen` exports and Lexer behavior are unchanged.
+## 11. Verification Plan
 
-## 7. Resource policy
-
-Existing values remain unchanged:
-
-- `MAX_AST_NODES=1_000_000`
-- `MAX_AST_DEPTH=256`
-- `MAX_DIRECT_CHILDREN=262_144`
-- `MAX_EXPRESSION_NODES=262_144`
-- `MAX_STATEMENT_NODES=262_144`
-
-`MAX_PARSER_DEPTH=256` is introduced as a separately named dimension
-with the same initial ceiling.
-
-Validation callers may tighten limits but cannot raise them above the
-hard ceilings. Parameter accounting reuses `MAX_DIRECT_CHILDREN`;
-no new numeric parameter ceiling is introduced.
-
-## 8. Verification plan
+The Owner will execute the following after applying the complete patch:
 
 1. `python -m py_compile src/zen/ast/*.py src/zen/parser/*.py`
 2. `python -m pytest -q`
 3. `python -m unittest discover -s tests -v`
 4. `python -m pytest -q -s tests/test_ast_validation_performance.py`
-5. Review `git diff --check`, `git diff --stat`, and the complete diff,
-   including untracked files.
-6. Record actual Termux Python/OS versions, exact commands, exit codes,
-   test totals, and performance/memory measurements in the evidence
-   ledger only after execution.
+5. `git diff --check`
+6. Review `git diff --stat`, `git status --short`, and the complete diff,
+   including every new untracked audit document.
 
-A passing isolated draft harness is not a substitute for repository
-tests in Termux or remote CI.
+Record exact:
+- branch and commit;
+- working-tree state;
+- OS and Python version;
+- commands and exit codes;
+- test totals and failures;
+- measured runtime and peak memory;
+- local versus remote CI status.
 
-## 9. Acceptance criteria
+Do not claim tests passed until the Owner supplies actual output.
 
-- Source identity is immutable, explicit, and separate from `SourceSpan`.
-- Canonical AST validation rejects missing, malformed, or inconsistent
-  source identity.
-- Legacy adaptation is explicit, bounded, deterministic, non-mutating,
-  and rejects malformed graphs.
-- Source ordering, child types, spans, cycles, and reused nodes are
-  validated.
-- Resource dimensions are independently accounted for with existing
-  hard ceilings.
-- Parser depth and AST depth are distinct named dimensions.
-- Validation is iterative, deterministic, and returns inspectable
-  diagnostics/results.
-- Existing regression tests and new tests pass in Termux.
-- Performance/memory measurements are recorded without unsupported
+## 12. Acceptance Criteria
+
+ZB-07 may be closed only when:
+- All ZB07-01 through ZB07-11 acceptance criteria have implementation
+  references and verification evidence.
+- FunctionDecl metadata is enforced canonically and legacy compatibility is
+  explicit.
+- Legacy adaptation does not invent metadata.
+- Existing ZIIF-01 fingerprint behavior is preserved by regression tests.
+- Resource boundaries are covered without changing production ceilings.
+- Iterative validation is verified.
+- Performance and memory observations are recorded without unsupported
   improvement claims.
-- Documentation reflects actual test evidence and remaining limitations.
+- Existing regression tests pass in Termux.
+- Documentation and governance accurately describe the current status.
+- The final Git diff is reviewed.
+- The Owner approves the completion report.
 
-## 10. Explicit exclusions
+## 13. Execution Boundary
 
-No grammar redesign, full Semantic Analysis, runtime rewrite,
-optimizer/IR, Python–Rust integration, Lexer contract change,
-new dependencies, numeric limit increase, Identity Registry
-implementation, node/entity identity persistence,
-manifest/reconciliation/synchronization implementation, ZSA/ZSRA,
-Red/Blue/Purple Team, ZEPI, or automatic repair.
+The implementation branch must be created from freshly fetched
+`origin/main`. The historical ZB-07 branch and active ZIIF-01 branch must
+remain intact.
 
-## 11. Execution boundary
+This plan does not authorize the assistant or any agent to commit, push,
+merge, create a PR, release, or deploy.
 
-The patch is to be applied on
-`feature/zb07-source-identity-validation`, based on the current fetched
-`origin/main`.
-
-No changes are to be made on `main` or the active security-policy
-branch. Commit, push, PR creation, merge, release, and deployment are
-not performed by this preparation package.
-
-Owner will first apply the text patch in Termux and return actual test
-output for review.
+The Owner applies the patch in Termux, performs the requested commit and
+push after the complete patch handoff, and then supplies post-push test
+results for review.

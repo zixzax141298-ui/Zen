@@ -68,6 +68,32 @@ class LegacyAstAdapterTests(unittest.TestCase):
 
         self.assertTrue(validate_ast(adapted).is_valid)
 
+    def test_adapter_does_not_invent_function_metadata(self):
+        legacy_function = FunctionDecl(
+            sp(2, 9),
+            "f",
+            ("x",),
+            BlockStmt(sp(5, 8), ()),
+        )
+        original = Program(sp(1, 10), (legacy_function,))
+
+        adapted = adapt_legacy_ast(
+            original,
+            SourceIdentifier.new(),
+        )
+
+        adapted_function = adapted.statements[0]
+
+        self.assertIsNone(adapted_function.name_span)
+        self.assertIsNone(adapted_function.parameter_spans)
+        self.assertIn(
+            "AST_FUNCTION_METADATA_MISSING",
+            {
+                item.code
+                for item in validate_ast(adapted).diagnostics
+            },
+        )
+
     def test_adapter_requires_explicit_source_identifier(self):
         with self.assertRaises(TypeError):
             adapt_legacy_ast(
@@ -112,6 +138,8 @@ class LegacyAstAdapterTests(unittest.TestCase):
                         ),
                     ),
                 ),
+                name_span=sp(11, 12),
+                parameter_spans=(sp(13, 14),),
             ),
 
             IfStmt(

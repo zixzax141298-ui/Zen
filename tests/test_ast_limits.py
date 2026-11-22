@@ -1,7 +1,7 @@
 import unittest
 
 from zen.ast import ExpressionStmt, LiteralExpr, Program, SourceSpan
-from zen.limits import MAX_AST_DEPTH, MAX_AST_NODES, MAX_DIRECT_CHILDREN
+from zen.limits import MAX_AST_DEPTH, MAX_AST_NODES, MAX_DIRECT_CHILDREN, MAX_PARSER_DEPTH
 from zen.parser import ParseContext, ParseError
 
 
@@ -35,6 +35,27 @@ class AstLimitsTests(unittest.TestCase):
             context.enter(span())
         self.assertEqual((caught.exception.line, caught.exception.column), (1, 1))
         self.assertEqual(caught.exception.span, span())
+
+    def test_parser_depth_boundary_minus_one_exact_and_plus_one(self):
+        below = ParseContext(depth=MAX_PARSER_DEPTH - 1, node_count=0)
+        exact = below.enter(span())
+
+        self.assertEqual(exact.parser_depth, MAX_PARSER_DEPTH)
+
+        with self.assertRaises(ParseError):
+            exact.enter(span())
+
+    def test_parser_node_count_boundary_minus_one_exact_and_plus_one(self):
+        below = ParseContext(
+            depth=0,
+            node_count=MAX_AST_NODES - 1,
+        )
+        exact = below.track_node(span())
+
+        self.assertEqual(exact.node_count, MAX_AST_NODES)
+
+        with self.assertRaises(ParseError):
+            exact.track_node(span())
 
     def test_context_initial_and_increment_operations_are_immutable(self):
         initial = ParseContext.initial()

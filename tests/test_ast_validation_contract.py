@@ -310,6 +310,154 @@ class AstValidationContractTests(unittest.TestCase):
                     self.codes(validate_ast(program, limits)),
                 )
 
+    def test_function_metadata_is_required_for_canonical_validation(self):
+        source_id = SourceIdentifier.new()
+        body = BlockStmt(
+            sp(5, 9),
+            (),
+            source_id=source_id,
+        )
+        function = FunctionDecl(
+            sp(1, 10),
+            "f",
+            ("x",),
+            body,
+            source_id=source_id,
+            name_span=sp(1, 2),
+            parameter_spans=(sp(3, 4),),
+        )
+        program = Program(
+            sp(1, 10),
+            (function,),
+            source_id=source_id,
+        )
+
+        self.assertTrue(validate_ast(program).is_valid)
+
+        legacy_function = FunctionDecl(
+            sp(1, 10),
+            "f",
+            ("x",),
+            body,
+            source_id=source_id,
+        )
+        legacy_program = Program(
+            sp(1, 10),
+            (legacy_function,),
+            source_id=source_id,
+        )
+
+        self.assertIn(
+            "AST_FUNCTION_METADATA_MISSING",
+            self.codes(validate_ast(legacy_program)),
+        )
+
+    def test_function_parameter_span_count_must_match_parameters(self):
+        source_id = SourceIdentifier.new()
+        body = BlockStmt(
+            sp(7, 9),
+            (),
+            source_id=source_id,
+        )
+        function = FunctionDecl(
+            sp(1, 10),
+            "f",
+            ("x", "y"),
+            body,
+            source_id=source_id,
+            name_span=sp(1, 2),
+            parameter_spans=(sp(3, 4),),
+        )
+        program = Program(
+            sp(1, 10),
+            (function,),
+            source_id=source_id,
+        )
+
+        self.assertIn(
+            "AST_FUNCTION_PARAMETER_SPAN_COUNT_MISMATCH",
+            self.codes(validate_ast(program)),
+        )
+
+    def test_function_metadata_must_be_contained_and_ordered(self):
+        source_id = SourceIdentifier.new()
+
+        outside_body = BlockStmt(
+            sp(8, 9),
+            (),
+            source_id=source_id,
+        )
+        outside_function = FunctionDecl(
+            sp(1, 10),
+            "f",
+            ("x",),
+            outside_body,
+            source_id=source_id,
+            name_span=sp(10, 11),
+            parameter_spans=(sp(3, 4),),
+        )
+        outside_program = Program(
+            sp(1, 10),
+            (outside_function,),
+            source_id=source_id,
+        )
+        self.assertIn(
+            "AST_FUNCTION_METADATA_OUT_OF_RANGE",
+            self.codes(validate_ast(outside_program)),
+        )
+
+        ordered_body = BlockStmt(
+            sp(8, 9),
+            (),
+            source_id=source_id,
+        )
+        overlapping_function = FunctionDecl(
+            sp(1, 10),
+            "f",
+            ("x",),
+            ordered_body,
+            source_id=source_id,
+            name_span=sp(1, 4),
+            parameter_spans=(sp(3, 5),),
+        )
+        overlapping_program = Program(
+            sp(1, 10),
+            (overlapping_function,),
+            source_id=source_id,
+        )
+        self.assertIn(
+            "AST_FUNCTION_METADATA_ORDER_INVALID",
+            self.codes(validate_ast(overlapping_program)),
+        )
+
+    def test_function_metadata_corruption_is_rejected(self):
+        source_id = SourceIdentifier.new()
+        body = BlockStmt(
+            sp(5, 9),
+            (),
+            source_id=source_id,
+        )
+        function = FunctionDecl(
+            sp(1, 10),
+            "f",
+            ("x",),
+            body,
+            source_id=source_id,
+            name_span=sp(1, 2),
+            parameter_spans=(sp(3, 4),),
+        )
+        object.__setattr__(function, "parameter_spans", (object(),))
+        program = Program(
+            sp(1, 10),
+            (function,),
+            source_id=source_id,
+        )
+
+        self.assertIn(
+            "AST_FUNCTION_PARAMETER_SPAN_INVALID",
+            self.codes(validate_ast(program)),
+        )
+
     def test_parameter_limit_is_counted(self):
         source_id = SourceIdentifier.new()
 
@@ -342,6 +490,133 @@ class AstValidationContractTests(unittest.TestCase):
             "AST_PARAMETER_LIMIT_EXCEEDED",
             self.codes(result),
         )
+
+    def test_resource_limits_accept_exact_boundary_and_reject_limit_minus_one(self):
+        source_id = SourceIdentifier.new()
+
+        first = ExpressionStmt(
+            sp(2, 3),
+            LiteralExpr(
+                sp(2, 3),
+                1,
+                source_id=source_id,
+            ),
+            source_id=source_id,
+        )
+        second = ExpressionStmt(
+            sp(4, 5),
+            LiteralExpr(
+                sp(4, 5),
+                2,
+                source_id=source_id,
+            ),
+            source_id=source_id,
+        )
+        program = Program(
+            sp(1, 6),
+            (first, second),
+            source_id=source_id,
+        )
+
+        # This tree has:
+        # 5 total nodes, depth 3, 2 expressions, 2 statements,
+        # and 2 direct children at the Program root.
+        cases = (
+            (
+                "max_nodes",
+                5,
+                "AST_NODE_LIMIT_EXCEEDED",
+            ),
+            (
+                "max_depth",
+                3,
+                "AST_DEPTH_LIMIT_EXCEEDED",
+            ),
+            (
+                "max_expression_nodes",
+                2,
+                "AST_EXPRESSION_LIMIT_EXCEEDED",
+            ),
+            (
+                "max_statement_nodes",
+                2,
+                "AST_STATEMENT_LIMIT_EXCEEDED",
+            ),
+            (
+                "max_direct_children",
+                2,
+                "AST_DIRECT_CHILD_LIMIT_EXCEEDED",
+            ),
+        )
+
+        for field, exact, diagnostic in cases:
+            with self.subTest(resource=field, boundary="below"):
+                limits = ASTValidationLimits(
+                    **{field: exact - 1}
+                )
+                result = validate_ast(program, limits)
+                self.assertIn(diagnostic, self.codes(result))
+
+            with self.subTest(resource=field, boundary="exact"):
+                limits = ASTValidationLimits(
+                    **{field: exact}
+                )
+                result = validate_ast(program, limits)
+                self.assertTrue(result.is_valid)
+                self.assertTrue(result.complete)
+
+            with self.subTest(resource=field, boundary="above"):
+                limits = ASTValidationLimits(
+                    **{field: exact + 1}
+                )
+                result = validate_ast(program, limits)
+                self.assertTrue(result.is_valid)
+                self.assertTrue(result.complete)
+
+    def test_parameter_limit_accepts_exact_boundary_and_rejects_below(self):
+        source_id = SourceIdentifier.new()
+
+        body = BlockStmt(
+            sp(8, 10),
+            (),
+            source_id=source_id,
+        )
+        function = FunctionDecl(
+            sp(1, 11),
+            "f",
+            ("a", "b"),
+            body,
+            source_id=source_id,
+            name_span=sp(1, 2),
+            parameter_spans=(sp(3, 4), sp(5, 6)),
+        )
+        program = Program(
+            sp(1, 11),
+            (function,),
+            source_id=source_id,
+        )
+
+        below = validate_ast(
+            program,
+            ASTValidationLimits(max_parameters=1),
+        )
+        exact = validate_ast(
+            program,
+            ASTValidationLimits(max_parameters=2),
+        )
+        above = validate_ast(
+            program,
+            ASTValidationLimits(max_parameters=3),
+        )
+
+        self.assertIn(
+            "AST_PARAMETER_LIMIT_EXCEEDED",
+            self.codes(below),
+        )
+        self.assertTrue(exact.is_valid)
+        self.assertTrue(exact.complete)
+        self.assertTrue(above.is_valid)
+        self.assertTrue(above.complete)
 
     def test_deep_validation_is_iterative_and_stops_at_limit(self):
         source_id = SourceIdentifier.new()

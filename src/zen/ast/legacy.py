@@ -127,6 +127,7 @@ def adapt_legacy_ast(
         root,
         limits,
         require_source_identity=False,
+        require_function_metadata=False,
     )
 
     if not result.is_valid or not result.complete:

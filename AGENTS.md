@@ -107,44 +107,33 @@ Validation must not silently repair malformed canonical AST input.
 
 ### ZB-07 — AST Semantic Readiness & Source Identity Contract
 
-**Status:** CLOSED — scope-qualified.
+**Status:** REOPENED — highest active milestone; implementation and verification in progress.
 
-- Implementation commit: `a6f3770f50dd5f7cb637cd7239220f07eecf6414`
-- Pull request: #8 — merged into `main`.
-- Post-merge `main` commit: `a62f4e904adfc9f9ae1e2d15b1d0d8e57fc5d676`
-- Post-push Termux regression result: `134 passed, 68 subtests passed`.
-- Historical approved baseline: `0003a9b961810510c2d67c7851ab3f2e9327c5b2`.
-- Historical baseline branch: `audit/zb06-strict-ast-contract`.
+- Historical implementation commit: `a6f3770f50dd5f7cb637cd7239220f07eecf6414`
+- Historical merged milestone base: `a62f4e904adfc9f9ae1e2d15b1d0d8e57fc5d676`
+- Reopened implementation baseline: current fetched `origin/main`, recorded in
+  `docs/engineering/ZB-07_CHANGE_PLAN.md`.
+- Current Change Plan: `docs/engineering/ZB-07_CHANGE_PLAN.md` v2.0.
 - Evidence ledger: `docs/engineering/ZB-07_EVIDENCE.md`.
 
-Closure is limited to the approved ZB-07 scope and the recorded evidence.
-It does not claim that deferred work, performance measurements, memory
-measurements, cross-platform verification, or remote CI verification are complete.
+The earlier scope-qualified closure remains historical evidence. It does not
+close the newly approved ZB-07 v2.0 requirements. The reopened work must be
+verified independently, and no new completion claim is permitted before the
+acceptance criteria have evidence.
 
 ### ZIIF-01 — Canonical AST Identity Fingerprint
 
-**Status:** ACTIVE — implementation applied; local tests passed; final review pending.
+**Status:** PAUSED — existing implementation and fingerprint contract must be preserved.
 
-- Baseline branch: `feature/ziif-01-ast-fingerprint`
-- Baseline commit: `a62f4e904adfc9f9ae1e2d15b1d0d8e57fc5d676`
+- Existing implementation remains in the repository.
+- Follow-on ZIIF-01 work is paused until reopened ZB-07 is complete.
+- Existing fingerprint version, output format, explicit node schemas, and
+  source-metadata exclusion from the v1 digest must remain unchanged.
 - Change Plan: `docs/engineering/ZIIF-01_CHANGE_PLAN.md`
 - Evidence ledger: `docs/engineering/ZIIF-01_EVIDENCE.md`
 
-Approved scope:
-- Versioned canonical AST structural fingerprint using SHA-256 and domain separation.
-- Explicit closed node schemas and deterministic field ordering.
-- Mandatory `validate_ast` before fingerprint generation.
-- Iterative encoding and public API exports.
-- Focused regression tests and evidence documentation.
-
-Explicit exclusions:
-- AST node, grammar, or parser changes.
-- Semantic analysis, runtime, optimizer, or IR changes.
-- Resource-limit or security-policy changes.
-- Dependency additions or Python-Rust integration.
-- Changes to `SECURITY.md`.
-
-Do not expand this milestone without a separate Change Plan and Owner approval.
+Do not resume follow-on work or expand the fingerprint contract while ZB-07
+has priority unless the Owner explicitly approves a separate scope change.
 ## 9. Evidence and Documentation
 
 Use these evidence labels consistently:

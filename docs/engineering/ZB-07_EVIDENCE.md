@@ -6,9 +6,9 @@
 
 Document type: Initial manual engineering evidence ledger
 Milestone: ZB-07
-Ledger status: BASELINE_APPROVED / EVIDENCE_IN_PROGRESS
-Implementation status: IMPLEMENTED LOCALLY — final diff review and commit pending.
-Verification status: PARTIALLY_VERIFIED — Termux regression suite passed; individual acceptance criteria, performance, and memory evidence remain under review.
+Ledger status: REOPENED — ZB-07 v2.0 evidence in progress.
+Implementation status: Historical ZB-07 implementation remains recorded below; reopened v2.0 changes are not yet verified.
+Verification status: NOT_TESTED for the reopened v2.0 acceptance criteria. Historical test records below are preserved and are not evidence for the reopened patch.
 
 Approved technical baseline commit:
 
@@ -468,3 +468,81 @@ performance or memory objective has been measured, that cross-platform
 behavior has been verified, or that remote CI passed.
 
 Historical evidence entries above remain unchanged.
+
+
+## 14. Reopening Record — ZB-07 v2.0
+
+**Current status:** REOPENED — highest active milestone.
+
+**Authority:** Owner-approved ZB-07 Change Plan v2.0.
+
+**Priority:** ZB-07 is the highest active milestone. ZIIF-01 follow-on work
+is paused until ZB-07 completion. Existing ZIIF-01 implementation and its
+fingerprint v1 contract must be preserved.
+
+### Reopened baseline
+
+- Repository: `zixzax141298-ui/Zen`.
+- Owner-reported working branch before patch application:
+  `feature/ziif-01-ast-fingerprint`.
+- Owner-reported local HEAD:
+  `cc166718d9c61f77afb861e2e3e57e19d9708975`.
+- Owner-reported `origin/main`:
+  `ea2c14841540ce236d9c74d45401e47abe9982f7`.
+- Owner-reported working tree at the baseline check: clean.
+- The historical branch `feature/zb07-source-identity-validation` is not
+  the base for the reopened work because it predates the current main line.
+
+These are baseline observations reported during preparation. The Owner must
+confirm the fetched remote SHA before creating the implementation branch.
+
+### Reopened implementation observations
+
+Preliminary source inspection found existing implementation for source
+identity, the legacy adapter, unified validation, graph checks, resource
+accounting, parser-depth separation, and iterative traversal. This is an
+implementation inspection only; it is not proof that all requirements are
+correct or verified.
+
+The FunctionDecl source metadata contract was incomplete in the inspected
+baseline. ZB07-05 therefore remains a specific implementation and verification
+focus.
+
+### Reopened evidence status
+
+| Requirement | Preliminary implementation observation | Reopened verification |
+|---|---|---|
+| ZB07-01 | Present | NOT_TESTED |
+| ZB07-02 | Present | NOT_TESTED |
+| ZB07-03 | Present | NOT_TESTED |
+| ZB07-04 | Present; metadata compatibility needs explicit tests | NOT_TESTED |
+| ZB07-05 | INCOMPLETE in inspected baseline | NOT_TESTED |
+| ZB07-06 | Present | NOT_TESTED |
+| ZB07-07 | Present | NOT_TESTED |
+| ZB07-08 | Present | NOT_TESTED |
+| ZB07-09 | PARTIAL; FunctionDecl metadata integration required | NOT_TESTED |
+| ZB07-10 | PARTIAL; complete boundary matrix required | NOT_TESTED |
+| ZB07-11 | Iterative implementation and non-gating measurement test present | NOT_TESTED |
+
+### Reopened verification record
+
+No reopened v2.0 test result is recorded here yet.
+
+The following must be added only after actual execution:
+- Exact branch and commit.
+- Exact environment and Python version.
+- Exact commands and exit codes.
+- Actual test totals and failures.
+- Performance runtime and peak-memory observations.
+- Local versus remote CI result.
+- Complete changed-file ledger from actual Git output.
+
+Historical evidence entries and the earlier scope-qualified closure record
+remain unchanged. They must not be relabeled as verification of the reopened
+v2.0 work.
+
+### Reopened completion gate
+
+ZB-07 remains OPEN until every approved acceptance criterion has traceable
+implementation and verification evidence, the complete diff is reviewed,
+and the Owner approves the final completion report.

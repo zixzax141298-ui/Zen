@@ -103,16 +103,56 @@ class FunctionDecl(Statement):
     parameters: tuple[str, ...]
     body: "BlockStmt"
 
+    # Optional only for legacy construction compatibility.
+    # Canonical AST validation requires both metadata fields.
+    name_span: SourceSpan | None = field(
+        default=None,
+        kw_only=True,
+    )
+    parameter_spans: tuple[SourceSpan, ...] | None = field(
+        default=None,
+        kw_only=True,
+    )
+
     def __post_init__(self) -> None:
         super(FunctionDecl, self).__post_init__()
+
         if not isinstance(self.name, str):
             raise TypeError("Function name must be a string")
-        parameters = _tuple_of(self.parameters, "parameters", child_collection=False)
+
+        parameters = _tuple_of(
+            self.parameters,
+            "parameters",
+            child_collection=False,
+        )
         object.__setattr__(self, "parameters", parameters)
+
         if any(not isinstance(item, str) for item in parameters):
             raise TypeError("Function parameters must be strings")
+
         if not isinstance(self.body, BlockStmt):
             raise TypeError("Function body must be a BlockStmt")
+
+        if self.name_span is not None and not isinstance(
+            self.name_span,
+            SourceSpan,
+        ):
+            raise TypeError("Function name_span must be a SourceSpan or None")
+
+        if self.parameter_spans is not None:
+            if type(self.parameter_spans) is not tuple:
+                raise TypeError(
+                    "Function parameter_spans must be a tuple or None"
+                )
+
+            if any(
+                not isinstance(item, SourceSpan)
+                for item in self.parameter_spans
+            ):
+                raise TypeError(
+                    "Function parameter_spans must contain SourceSpan values"
+                )
+
         _validate_children(self, (self.body,), "body")
 
 
