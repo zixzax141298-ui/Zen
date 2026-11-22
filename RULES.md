@@ -8,14 +8,21 @@ Core identities:
 - ZEN: the language and project.
 - ZSS: Zen Structured Syntax.
 - ZASI: Zen Adaptive Structural Integrity.
+- ZEAI: ZEN's native engineering intelligence and verification orchestration system.
 
-These identities must remain consistent across source code, architecture,
-documentation, and engineering decisions.
+These identities and their responsibilities must remain consistent across source, architecture, documentation, and engineering decisions.
 
-## 2. Core Engineering Values
+## 2. Owner Authority
+
+The Repository Owner is the final authority for project decisions, scope, approvals, exceptions, and repository integration.
+
+No agent, automation, generated document, CI workflow, tool, or assistant-authored policy has authority above the Owner. An agent must not elevate its own interpretation into a higher authority, invent restrictions, or use repository text authored by an agent to override an explicit Owner decision. Governance documents express the Owner-approved rules currently in force; the Owner may explicitly amend or supersede them.
+
+When an Owner instruction is ambiguous or two active Owner-approved requirements genuinely conflict, stop only the affected action, identify the exact conflict, and ask the Owner. Do not silently choose a permissive interpretation or broaden the task.
+
+## 3. Core Engineering Values
 
 ZEN development prioritizes:
-
 1. Structural clarity.
 2. Explicit and predictable semantics.
 3. Safety and reliability.
@@ -24,14 +31,12 @@ ZEN development prioritizes:
 6. Clear component ownership.
 7. Controlled and accountable evolution.
 
-A fast implementation is not acceptable if it hides defects, weakens contracts,
-or transfers unresolved risk to another component.
+A fast implementation is not acceptable if it hides defects, weakens contracts, or transfers unresolved risk to another component.
 
-## 3. Maturity and Evolution Principle
+## 4. Maturity and Evolution
 
 ZEN pursues demonstrable maturity, not endless perfection.
 
-Rules:
 - Define measurable milestone completion criteria.
 - Address risks that block correctness, safety, or the milestone's purpose.
 - Record non-blocking imperfections and known limitations.
@@ -39,288 +44,122 @@ Rules:
 - Revisit decisions when new evidence justifies doing so.
 - Never let speed override integrity.
 
-A milestone may be closed only when its required acceptance criteria are supported
-by evidence. Remaining limitations must be disclosed.
+A milestone may be closed only when its required acceptance criteria are supported by evidence. Remaining limitations must be disclosed.
 
-## 4. Authority and Change Governance
+## 5. Change Governance
 
-The Owner has final authority over project decisions.
-
-Before repository modifications:
-1. Inspect the baseline.
+For repository changes:
+1. Inspect the exact baseline.
 2. Identify affected files and components.
 3. Analyze architectural, semantic, security, and compatibility impact.
-4. Prepare an exact Change Plan.
-5. Obtain explicit Owner approval.
-6. Implement only the approved scope.
+4. Prepare an exact Change Plan when required by the scope.
+5. Obtain the Owner's explicit authorization for the specific change.
+6. Change only the authorized scope.
 7. Verify and record evidence.
-8. Review the final changes.
+8. Review the complete final diff, including untracked files.
+9. Report actual repository state and limitations.
 
-Approval for one change does not authorize unrelated or adjacent changes.
+The Owner's explicit authorization applies to the scope stated. It does not authorize unrelated adjacent changes. A request to prepare a PR authorizes preparation and submission of that stated PR scope, but does not authorize merge unless the Owner explicitly says so.
 
-Commit, push, merge, release, publication, and deployment require separate
-explicit authorization.
-
-If governance documents conflict, stop the affected work and ask the Owner.
-Do not silently select the more permissive interpretation.
-
-## 5. Component Ownership
+## 6. Component Ownership
 
 ### Lexer
-Responsible for:
-- Character-level processing.
-- Token recognition.
-- Lexical correctness.
-- Lexical diagnostics.
+Character processing, token recognition, lexical correctness, and lexical diagnostics.
 
 ### Parser
-Responsible for:
-- Syntax recognition.
-- Grammar enforcement.
-- Program structure construction.
-- Syntax diagnostics.
-- Parser-specific recursion and nesting safety.
+Syntax recognition, grammar enforcement, program structure construction, syntax diagnostics, and parser-specific recursion/nesting safety.
 
 ### AST
-Responsible for:
-- Canonical program representation.
-- Explicit node and child contracts.
-- Source identity and source-location representation.
-- Structural invariants.
+Canonical program representation, explicit node/child contracts, source identity/location representation, and structural invariants.
 
 ### ZASI
-Responsible for:
-- AST structural integrity.
-- Node and child type validation.
-- Graph integrity.
-- Cycle and reused-node detection.
-- Structural resource limits.
-- Structural diagnostics.
+AST structural integrity, node/child type validation, graph integrity, cycle/reuse detection, structural resource limits, and structural diagnostics.
 
 ### Semantic Analysis
-Responsible for:
-- Semantic interpretation of validated AST.
-- Name and scope analysis.
-- Type and semantic constraints.
-- Semantic diagnostics.
+Semantic interpretation of validated AST, name/scope analysis, type and semantic constraints, and semantic diagnostics. It must not silently mutate canonical AST.
 
-Semantic Analysis must consume validated AST input and must not silently mutate
-the canonical AST.
+### Compiler
+Correct, validated transformation between declared program representations.
 
 ### Runtime
-Responsible for:
-- Execution of semantically valid programs.
-- Runtime behavior and runtime diagnostics.
+Execution semantics, runtime validation, behavior, and runtime diagnostics.
+
+### ZEAI
+Engineering-event validation, task orchestration, native CI coordination, security/governance enforcement, sandbox invocation, and evidence collection. ZEAI does not own or replace the internal correctness responsibilities of ZEN language components.
 
 A component must not silently assume another component's responsibilities.
 
-## 6. AST and ZASI Rules
+## 7. AST and ZASI Rules
 
 - Canonical AST input must satisfy its declared structural contract.
 - Source identity must not depend on traversal order or object memory addresses.
 - Source identity and source span are separate concepts.
 - Legacy AST compatibility must use an explicit adapter.
-- Legacy nodes without required identity must not silently pass the canonical
-  Semantic Analysis path.
+- Legacy nodes without required identity must not silently pass the canonical Semantic Analysis path.
 - Source order must be represented and validated explicitly.
-- AST validation must detect invalid node types, invalid children, cycles,
-  reused nodes, invalid spans, and inconsistent source identity.
+- AST validation must detect invalid node types, invalid children, cycles, reused nodes, invalid spans, and inconsistent source identity.
 - Validation must not silently repair malformed canonical AST input.
 - Validation must be deterministic and iterative where required by ZB-07.
 - Validation results must be explicit and inspectable.
 
-## 7. Diagnostics
+## 8. Diagnostics
 
-Diagnostics must have a consistent model.
+Where applicable, diagnostics include a stable code, human-readable message, severity, primary and related source locations, and responsible component. Lexer, Parser, ZASI, Semantic Analysis, and Runtime retain their respective diagnostic ownership.
 
-Where applicable, a diagnostic includes:
-- Stable diagnostic code.
-- Human-readable message.
-- Severity.
-- Primary source location.
-- Related source locations.
-- Responsible component.
+## 9. Resource Safety
 
-Ownership:
-- Lexer: lexical diagnostics.
-- Parser: syntax diagnostics.
-- ZASI: AST structural diagnostics.
-- Semantic Analysis: semantic diagnostics.
-- Runtime: runtime diagnostics.
+Resource safety must be explicit and measurable. Distinguish parser nesting, AST depth, total nodes, expressions, statements, parameters, direct children, memory, and execution time. Resource-limit changes require technical justification, boundary tests, performance and memory analysis, compatibility analysis, and explicit Owner approval. Do not weaken limits merely to increase acceptance.
 
-Compatibility exceptions may remain where needed, but must not obscure the
-underlying diagnostic contract.
+## 10. Compatibility
 
-## 8. Resource Safety
+Compatibility changes must be classified and documented across source language, AST representation, parser/API, diagnostics, serialized artifacts, and tooling. Do not claim backward compatibility without relevant evidence. Legacy support must be explicit, bounded, and testable.
 
-Resource safety must be explicit and measurable.
+## 11. Testing and Verification
 
-Distinguish:
-- Parser recursion or nesting depth.
-- AST structural depth.
-- Total AST node count.
-- Expression count.
-- Statement count.
-- Parameter count.
-- Direct-child count.
+Test actual behavior, malformed inputs, boundaries, failure paths, regressions, compatibility, resource limits, and determinism where required. Reports distinguish executed, passed, failed, and unexecuted tests, and local results from remote CI. Never fabricate results.
 
-Validation should avoid unnecessary repeated traversal and quadratic behavior.
-Performance and memory claims require actual measurements.
+## 12. Evidence and Documentation
 
-Changes to resource limits require:
-- A technical reason.
-- Boundary tests.
-- Performance considerations.
-- Memory considerations.
-- Compatibility impact analysis.
-- Explicit Owner approval before implementation.
+Use these labels consistently:
+- **OBSERVED** — directly inspected or measured.
+- **DERIVED** — logically concluded from observations.
+- **ASSUMED** — provisional and not verified.
+- **UNKNOWN** — not established.
+- **NOT_TESTED** — no relevant test was executed.
+- **HISTORICAL** — valid for a prior baseline or branch but not necessarily the current one.
 
-Do not weaken safety limits merely to increase the number of accepted programs.
+Implementation and verification are separate statuses. Documentation must describe actual behavior and project status, not planned capabilities as implemented features.
 
-## 9. Compatibility
+## 13. Security
 
-Compatibility changes must be classified and documented.
+Read `SECURITY.md` before security-sensitive work. Security-sensitive work includes input validation, parser/AST resource controls, filesystem access, dependencies, secrets, trust boundaries, sandboxing, CI permissions, and generated/cached artifacts. Security-boundary changes require explicit Owner authorization and documented impact analysis.
 
-Consider:
-- Source-language compatibility.
-- AST representation compatibility.
-- Parser/API compatibility.
-- Diagnostic compatibility.
-- Serialized artifact compatibility.
-- Tooling and test compatibility.
-
-Do not claim backward compatibility without relevant evidence.
-
-Legacy support must be explicit, bounded, and testable.
-
-## 10. Testing and Verification
-
-Tests must verify actual behavior, not merely implementation structure.
-
-Required practices:
-- Test normal and malformed inputs.
-- Test boundary values.
-- Test failure paths.
-- Test regression behavior.
-- Test compatibility paths.
-- Test resource limits.
-- Test deterministic behavior where required.
-- Measure performance and memory when making related claims.
-
-Every report must distinguish:
-- Tests actually executed.
-- Tests that passed.
-- Tests that failed.
-- Tests not executed.
-- Local results and remote CI results.
-
-Never fabricate test results, benchmarks, or CI status.
-
-## 11. Evidence and Documentation
-
-Use these labels:
-
-- OBSERVED: directly inspected or measured.
-- DERIVED: logically concluded from observations.
-- ASSUMED: provisional and not verified.
-- UNKNOWN: not established.
-- NOT_TESTED: no relevant test has been executed.
-
-Implementation and verification are separate statuses.
-
-The file `docs/engineering/ZB-07_EVIDENCE.md` is the initial manual evidence
-ledger for ZB-07. It records requirements, decisions, and verification evidence.
-
-The integrated ZEEL Engineering Evidence System is a separate strategic proposal.
-It is not implemented merely because the manual ledger exists.
-
-Documentation must describe actual behavior and actual project status.
-Do not describe planned features as implemented features.
-
-## 12. Security
-
-Read `SECURITY.md` before security-sensitive work.
-
-Security-sensitive changes include:
-- Input validation.
-- Parser and AST resource controls.
-- Filesystem access.
-- Dependency and supply-chain changes.
-- Secret handling.
-- Trust boundaries.
-- Generated or cached artifact handling.
-
-Do not weaken security boundaries without explicit Owner approval and documented
-impact analysis.
-
-## 13. Milestone Status and Active Milestone
+## 14. Milestone Status and Active Work
 
 ### ZB-07 — AST Semantic Readiness & Source Identity Contract
 
-**Status:** CLOSED — scope-qualified.
+**Status: REOPENED — highest active milestone; implementation and verification in progress.**
 
-- Implementation commit: `a6f3770f50dd5f7cb637cd7239220f07eecf6414`.
-- PR #8 merged into `main`.
-- Merged `main` commit: `a62f4e904adfc9f9ae1e2d15b1d0d8e57fc5d676`.
-- Post-push Termux regression: `134 passed, 68 subtests passed`.
-- Historical approved baseline: `0003a9b961810510c2d67c7851ab3f2e9327c5b2`.
-- Evidence: `docs/engineering/ZB-07_EVIDENCE.md`.
-
-This closure is limited to the approved ZB-07 scope and recorded evidence.
-It does not establish completion of deferred work, performance or memory
-measurements, cross-platform verification, or remote CI verification.
+The historical scope-qualified closure and merged implementation remain historical evidence. They do not close the newly approved reopened ZB-07 v2.0 requirements. Use `docs/engineering/ZB-07_CHANGE_PLAN.md` and `docs/engineering/ZB-07_EVIDENCE.md` as the current milestone records. Do not declare completion until the reopened acceptance criteria have evidence.
 
 ### ZIIF-01 — Canonical AST Identity Fingerprint
 
-**Status:** ACTIVE — implementation applied; local tests passed; final review pending.
+**Status: PAUSED — preserve existing implementation and fingerprint v1 contract.**
 
-Baseline branch: `feature/ziif-01-ast-fingerprint`
+Follow-on ZIIF-01 work remains paused until reopened ZB-07 is complete unless the Owner explicitly authorizes a separate scope change. Preserve fingerprint version, output format, explicit node schemas, field order, and the v1 exclusion of source metadata from the digest.
 
-Baseline commit: `a62f4e904adfc9f9ae1e2d15b1d0d8e57fc5d676`
+## 15. ZEAI Security and Authority
 
-Change Plan: `docs/engineering/ZIIF-01_CHANGE_PLAN.md`
+- ZEAI's essential intelligence and verification core is deterministic and code-based; no external or local LLM is a required dependency for core operation or authority.
+- ZEAI is event-driven and acts only on validated events or explicit authorized tasks.
+- The Native CI Engine is responsible for verification; ZEAI orchestrates but must not fabricate or self-certify evidence.
+- Sandbox Isolation is mandatory before ZEAI executes untrusted code, tests, generated artifacts, or repair workloads.
+- The approved Linux isolation target is gVisor `runsc`. Execution is fail-closed. No fallback to `runc`, ordinary host execution, or an unreviewed backend is permitted.
+- Native component security and OS-enforced sandbox isolation are independent, complementary requirements.
+- Bounded automatic repair may occur only inside the approved sandbox. Owner approval is required before protected integration or merge.
+- ZEAI must never approve or merge its own changes, expand its own authority, or bypass governance.
+- Termux and GitHub Actions may be used as bounded development/verification environments; neither becomes the ultimate source of project authority.
 
-Evidence ledger: `docs/engineering/ZIIF-01_EVIDENCE.md`
+## 16. Completion Reports
 
-Approved scope:
-- Versioned canonical AST structural fingerprint.
-- SHA-256 with domain separation.
-- Explicit closed node schemas and fixed field order.
-- Mandatory canonical AST validation before encoding.
-- Iterative encoding.
-- Source metadata validation without digest inclusion.
-- Public API exports and focused regression tests.
-
-Explicit exclusions:
-- AST node, grammar, or parser changes.
-- Semantic analysis, runtime, optimizer, or IR changes.
-- Resource-limit or security-policy changes.
-- Dependency additions or Python-Rust integration.
-- Changes to `SECURITY.md`.
-
-Do not expand this milestone without a separate Change Plan and explicit Owner approval.
-
-## 14. Long-Term Architecture Roadmap
-
-The following are strategic proposals, not implemented features or automatic
-implementation authorization:
-
-1. Contract-First Architecture.
-2. Deterministic Reproducibility.
-3. Capability & Effect System.
-4. Compatibility Intelligence.
-5. ZASI Evolution Intelligence.
-6. Architecture Observatory.
-7. Proof-Carrying Artifacts.
-8. Integrated ZEEL Engineering Evidence System.
-
-Each proposal requires its own design, justification, impact analysis, and
-approval before implementation.
-
-## 15. Final Engineering Rule
-
-Every material engineering decision must be explainable, traceable, and
-verifiable.
-
-Do not hide defects, invent evidence, silently change contracts, or broaden
-approved scope.
+Every completed task reports baseline branch and commit, actual working-tree state, actual changed-file ledger, authorized scope, architecture/contract impact, exact verification commands and outcomes, local versus remote CI, security and compatibility implications, known limitations, unverified claims, and remaining work.

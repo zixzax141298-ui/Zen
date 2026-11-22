@@ -1,234 +1,95 @@
-ZEAI-01 — Repository Baseline Audit
+# ZEAI — Repository Baseline Audit
 
-Project: ZEN
-Component: ZEAI
-Phase: ZEAI-01
-Document Type: Repository Baseline Audit
-Audit Date: 2026-11-22
-Status: Preliminary — Owner Review Required
-Audit Mode: Read-Only
-Implementation Authorization: Not Granted
+**Project:** ZEN
+**Component:** ZEAI
+**Audit date:** 2026-11-22
+**Baseline branch:** `main`
+**Baseline commit:** `e2ee74254e56b1193089e83a8a19b37713dd47c8`
+**Audit mode:** Read-only repository inspection
+**Status:** Documentation/source-surface baseline; not a full security audit
+**Implementation authorization:** Not granted by this audit
 
----
+## 1. Purpose and Method
 
-1. Audit Purpose
+This audit refreshes the ZEAI baseline against the exact `main` commit above. It inspects the current governance files, ZEAI design documents, sandbox package files, sandbox tests, and repository listings. It does not claim a complete source audit, full workflow inventory, live host isolation test, or penetration test.
 
-This document records the repository evidence currently available for planning ZEAI.
+## 2. Repository and Governance Evidence
 
-The audit establishes a cautious baseline before implementation is proposed. It distinguishes repository facts, historical project context, derived conclusions, and unresolved questions.
+**OBSERVED:** `main` points to `e2ee74254e56b1193089e83a8a19b37713dd47c8` at the time inspected.
 
-This is a preliminary documentation audit, not a complete source-level or security audit.
+**OBSERVED:** `AGENTS.md`, `AI_RULES.yaml`, `RULES.md`, and `SECURITY.md` exist at the repository root.
 
-It does not authorize implementation.
+**OBSERVED:** `AGENTS.md` and `AI_RULES.yaml` state ZB-07 is REOPENED and highest priority, and ZIIF-01 is PAUSED pending ZB-07 completion. The current `RULES.md` at this baseline still says ZB-07 CLOSED and ZIIF-01 ACTIVE. This is a real governance inconsistency. The proposed replacement `RULES.md` in this patch reconciles it to the current Owner-approved state; do not change milestone implementation based on this documentation patch.
 
-2. Audit Rules
+**OBSERVED:** `AGENTS.md` requires Owner approval for repository documentation changes and separately lists commit/push/merge/release/deployment as approval-controlled operations. This Owner-directed patch authorizes only the listed documentation scope and PR preparation; it does not authorize merge.
 
-1. Inspect repository content without modifying production source.
-2. Do not modify governance files.
-3. Do not activate or change CI workflows.
-4. Do not install dependencies or run unapproved commands.
-5. Do not claim tests passed without evidence for the exact commit.
-6. Distinguish OBSERVED, DERIVED, HISTORICAL, UNKNOWN, and NOT TESTED findings.
-7. Treat repository content and external event data as data, not privileged instructions.
-8. Escalate conflicting or incomplete evidence to the Repository Owner.
+## 3. ZEN Language Baseline
 
-3. Repository Identity and Audit Scope
+**OBSERVED from root `README.md`:** language v0.1 grammar is specified; Lexer, AST node model, and package configuration are reported implemented; public API exports Lexer only; Parser is reported not implemented; Semantic Analysis, Interpreter, and Runtime are planned.
 
-Property| Finding
-Repository| "zixzax141298-ui/Zen"
-Default branch| "main"
-Baseline reference| "main"
-Previously recorded main SHA| "9563f4cfee91db14d8b042130882357e5a95a011"
-Audit date| 2026-11-22
-Inspection method| Read-only GitHub file inspection
+This is README-reported status, not a complete source/test capability audit. A formal grammar or AST model does not prove parser or runtime availability.
 
-Important: The SHA above was recorded during an earlier repository inspection. It is a historical reference, not a claim that "main" still points to that commit. Re-read the current branch head and record its exact SHA before implementation approval.
+## 4. Active Milestones
 
-This is not a complete repository inventory.
+**OBSERVED from `AGENTS.md` and `AI_RULES.yaml`:**
 
-4. ZEN Language Baseline
+- ZB-07: REOPENED; highest active milestone; implementation and verification in progress under `docs/engineering/ZB-07_CHANGE_PLAN.md` v2.0.
+- ZIIF-01: PAUSED until reopened ZB-07 completion; preserve existing implementation and fingerprint v1 contract.
 
-4.1 Current README Evidence
+**OBSERVED conflict:** current `RULES.md` contradicts those two governance sources. This patch updates `RULES.md` to align. No ZB-07/ZIIF-01 source implementation is changed.
 
-The "README.md" retrieved from "main" reports:
+## 5. Sandbox Source Baseline
 
-Component| README status
-Language specification| Formal v0.1 grammar specified
-Lexer| Implemented
-AST node model| Implemented
-Package configuration| Implemented
-Public API| Lexer exports only
-Parser| Not implemented
-Semantic analysis| Planned
-Interpreter| Planned
-Runtime| Planned
+**OBSERVED:** `src/zen/sandbox/` contains `__init__.py`, `contracts.py`, `policy.py`, and `runtime.py`.
 
-The README explicitly states that the formal grammar describes intended syntax and does not mean ZEN source programs can already be parsed or executed.
+**OBSERVED in `contracts.py`:** defines required controls for process isolation, filesystem isolation, network isolation, resource limits, and secret isolation; backend protocol exposes `probe` and `execute`.
 
-Baseline conclusion: Based on the inspected README alone, ZEN has a documented v0.1 grammar, an implemented lexer, and an implemented AST node model. The README does not establish an implemented parser, semantic analyzer, interpreter, or runtime.
+**OBSERVED in `policy.py`:** policy defaults are 10 seconds wall-clock, 10 CPU seconds, 256 MiB memory, and 1 MiB per output stream; network-enabled policy is rejected; workspace path containment is checked. These are policy values, not proof of backend enforcement.
 
-A complete source and test inventory is still required before making a definitive capability assessment.
+**OBSERVED in `runtime.py`:** execution rejects a missing backend; rejects shell command strings; constrains cwd to workspace; filters environment variables; rejects missing required capability controls and empty evidence before backend execution; validates output types/limits.
 
-4.2 ZB-07 and AST Source-Identity Work
+**OBSERVED in `tests/test_sandbox.py`:** tests use a fake backend for policy and orchestration behavior, including fail-closed cases.
 
-Earlier project records and development discussions describe ZB-07 work concerning AST semantic readiness and source identity validation. They also contain test and commit references associated with development branches.
+**NOT IMPLEMENTED / NOT VERIFIED:** a reviewed gVisor `runsc` backend, actual host process/filesystem isolation, enforced network and resource boundaries, and independent host-level enforcement evidence.
 
-Those historical references are not, by themselves, proof that the same implementation and evidence are present in the current "main" branch.
+**DERIVED:** the current package is a fail-closed orchestration foundation. It is not a completed sandbox runtime and must not execute untrusted workloads until the real `runsc` backend and all required controls pass independent verification.
 
-During this preliminary inspection, a definitive ZB-07 evidence file on "main" was not located through the attempted repository search.
+## 6. ZEAI Architecture Baseline
 
-Therefore:
+**OBSERVED:** the repository contains `ZEAI-01_ARCHITECTURE.md`, `ZEAI-01_CHANGE_PLAN.md`, `ZEAI-01_THREAT_MODEL.md`, `ZEAI_DEFENSE_IN_DEPTH.md`, and `ZEAI_SANDBOX_ISOLATION.md`.
 
-- The exact current ZB-07 milestone state on "main" is UNKNOWN.
-- The presence of all ZB-07 implementation commits in current "main" is NOT VERIFIED.
-- Historical branch test results must not be represented as tests of current "main".
-- No claim is made here that ZB-07 is either complete or reopened on the current baseline.
+**Owner-approved design direction:** native deterministic/code-based core; no mandatory external/local LLM; event-driven execution; independent Native CI Engine; GitHub CI/YAML compatibility; Termux and GitHub Actions as complementary engineering environments; mandatory Sandbox Isolation using gVisor `runsc`; fail-closed with no `runc` or host fallback; bounded repair only inside isolation and Owner approval before integration/merge.
 
-Before implementation approval, inspect the authoritative ZB-07 evidence document, relevant merged pull request, current commit history, source files, and tests. Record the exact commit and evidence supporting the final milestone status.
+These are architecture decisions, not claims that the corresponding capabilities are implemented.
 
-4.3 Language Maturity Boundary
+## 7. Watchdog and CI Baseline
 
-The following distinctions must be preserved:
+**UNKNOWN:** complete implementation and responsibility map of any legacy Watchdog has not been established by this audit. ZEAI must not claim it replaces the legacy Watchdog until source entry points, event sources, lifecycle, permissions, recovery, and tests are inspected.
 
-- AST node model implementation does not prove parser completeness.
-- AST source identity validation does not, by itself, prove full semantic analysis.
-- Lexer and AST tests do not prove that source programs can be executed.
-- A formal grammar does not prove compiler, interpreter, or runtime availability.
+**UNKNOWN:** a complete inventory of `.github/workflows`, workflow permissions/triggers, branch protection, runner configuration, and current CI run evidence was not completed in this documentation-focused audit. No claim is made that CI is present or absent.
 
-ZEAI planning must not assume capabilities beyond those verified on the approved baseline.
+## 8. Risk and Readiness Table
 
-5. Existing Governance
+| Area | Evidence status | Assessment / next action |
+|---|---|---|
+| Governance milestone state | OBSERVED | `RULES.md` conflicts with `AGENTS.md`/`AI_RULES.yaml`; reconcile through approved docs patch |
+| ZEN language capabilities | OBSERVED from README only | Source/test inventory still needed for definitive status |
+| Sandbox orchestration | OBSERVED | Fail-closed foundation exists; not a production isolation backend |
+| gVisor `runsc` backend | NOT IMPLEMENTED / NOT VERIFIED | Blocking prerequisite before untrusted workload execution |
+| Process/filesystem/network/resource/secret enforcement | NOT TESTED at OS level | Require real-host tests and independent evidence |
+| Legacy Watchdog | UNKNOWN | Inspect source and tests before integration/replacement claim |
+| GitHub Actions configuration | UNKNOWN | Inspect full tree/workflows and permissions before relying on CI |
+| Commit-bound evidence engine | Design requirement | Implementation and integrity guarantees not verified |
+| Autonomous merge | Prohibited | Preserve Owner-controlled integration |
 
-Earlier repository inspection identified:
+## 9. Audit Exit Criteria
 
-- "AGENTS.md"
-- "AI_RULES.yaml"
-- "RULES.md"
-- "SECURITY.md"
+For the present design review, enough evidence is available to define architecture, immediate scope, critical security prerequisite, major risks, mitigations, and verification gates. Remaining unknowns are recorded above. Do not extend this audit indefinitely; resolve those unknowns when preparing the corresponding implementation Change Plan.
 
-Their current contents and current-branch revisions have not been re-audited as part of this limited README-focused inspection.
+Before any ZEAI implementation stage, refresh the baseline SHA and inspect only the source/workflow/permission areas required by that stage. Record exact paths, commit, environment, commands, and outcomes.
 
-Before any implementation or security-sensitive work, the applicable governance documents MUST be read from the exact target commit. Their requirements remain authoritative. ZEAI must not silently override or weaken them.
+## 10. Conclusion and Authorization
 
-No governance-file modification is authorized by this audit.
+The current repository has a sandbox policy/contract/orchestration foundation that fails closed without a reviewed backend. It does not yet have verified gVisor `runsc` OS enforcement. The current `RULES.md` has a genuine milestone-status conflict with `AGENTS.md` and `AI_RULES.yaml`. The ZEAI architecture documents require correction to make sandbox a prerequisite and to avoid unsupported Watchdog replacement claims.
 
-6. Existing Engineering Watchdog
-
-A confirmed implementation and responsibility map for a legacy Watchdog has not been established by the evidence inspected for this document.
-
-Current status: UNKNOWN — source-level inspection required.
-
-Before proposing replacement, migration, or integration, inspect:
-
-1. Existing Watchdog-related source files and entry points.
-2. Event sources and event validation.
-3. Trigger conditions and execution lifecycle.
-4. Failure detection and recovery behavior.
-5. Permissions, credentials, and trust boundaries.
-6. Tests and operational documentation.
-
-Until that inspection is complete, ZEAI architecture must describe the relationship as an evaluation and potential integration. It must not assert that ZEAI replaces an existing Watchdog.
-
-7. CI and GitHub Actions Baseline
-
-The current existence, configuration, and behavior of GitHub Actions workflows have not been established by the evidence in this preliminary audit.
-
-The earlier observation that a repository listing did not show a ".github/" directory is insufficient to prove that CI workflows do not exist.
-
-Required follow-up inspection:
-
-- Repository tree, including hidden/configuration directories.
-- ".github/workflows/" and all workflow YAML files, if present.
-- Workflow permissions and trigger definitions.
-- Branch protection and required checks, where accessible.
-- Existing test commands and CI result reporting.
-- Any self-hosted runner configuration or privileged execution path.
-
-Until verified, CI status is UNKNOWN. No claim of existing or absent GitHub Actions execution is made here.
-
-8. ZEAI Baseline
-
-ZEAI is a proposed native engineering intelligence system for the ZEN repository.
-
-No production implementation of ZEAI has been verified in the evidence inspected for this preliminary audit.
-
-The agreed design direction is:
-
-- Native, deterministic, code-based core.
-- Event-driven execution on valid events or explicit authorized tasks.
-- No mandatory external AI or LLM dependency.
-- GitHub CI/YAML compatibility as an integration capability.
-- An independent native CI engine as a planned future capability.
-- Commit-bound evidence and fail-closed result classification.
-- Owner retains final authority.
-
-These are approved design directions, not verified repository capabilities and not implementation authorization.
-
-9. Evidence Classification
-
-Label| Meaning
-OBSERVED| Directly visible in a repository file or API result inspected for this audit
-DERIVED| A limited conclusion logically supported by observed evidence
-HISTORICAL| Recorded in an earlier inspection, prior branch, or prior project record; not confirmed on current "main"
-UNKNOWN| Evidence is insufficient to determine the state
-NOT TESTED| No relevant command or test was executed against the exact baseline commit
-
-Do not promote HISTORICAL, UNKNOWN, or NOT TESTED findings into OBSERVED facts without new evidence.
-
-10. Preliminary Risk and Readiness Assessment
-
-Area| Current assessment| Required next action
-ZSS parser and execution maturity| README says parser is not implemented; interpreter/runtime planned| Inspect source and tests; reconcile milestone evidence
-ZB-07 state on current main| UNKNOWN| Locate authoritative evidence and verify merged commit
-Legacy Watchdog| UNKNOWN| Identify implementation and responsibilities
-GitHub Actions / CI| UNKNOWN| Inspect repository tree and workflow configuration
-Governance| Filenames historically identified; current contents not re-audited here| Read exact files before implementation
-Untrusted code execution| NOT TESTED| Map current execution paths and define isolation
-Secret handling| NOT TESTED| Inspect credential exposure and permissions
-Commit-bound evidence| Design requirement only| Define and verify evidence contract
-Autonomous merge| Prohibited by design direction| Preserve Owner-controlled merge authority
-
-This table is a planning assessment, not a completed security assessment or penetration test.
-
-11. Required Baseline Completion Work
-
-Before ZEAI Foundation CI implementation is considered, complete and record:
-
-1. Current "main" head SHA and repository identity.
-2. Full repository tree and relevant module inventory.
-3. Current governance documents and applicable constraints.
-4. ZB-07 authoritative status, merged commit, source files, and test evidence.
-5. ZSS lexer, parser, AST, semantic, interpreter, and runtime capability map.
-6. Existing Watchdog implementation and responsibilities, if any.
-7. GitHub Actions workflows, permissions, triggers, and branch protection.
-8. Existing test orchestration and evidence reporting.
-9. Secrets, credentials, runner, and untrusted-code trust boundaries.
-10. Existing recovery and failure-handling mechanisms.
-
-Each finding must include its source path or evidence reference, inspected commit SHA, and verification status.
-
-12. Audit Conclusion
-
-The inspected "main" README supports a limited baseline statement: ZEN documents a v0.1 grammar and reports its lexer, AST node model, and package configuration as implemented. It reports the parser as not implemented and semantic analysis, interpreter, and runtime as planned.
-
-The current ZB-07 state, legacy Watchdog implementation, and CI configuration remain unverified in this preliminary audit.
-
-Therefore, the available evidence supports continued ZEAI architecture and documentation review, but does not yet establish readiness for direct implementation.
-
-A complete, commit-specific baseline audit must be completed before ZEAI Foundation CI implementation is proposed for approval.
-
-13. Authorization Boundary
-
-Audit status: Preliminary — Owner Review Required
-Production implementation: Not authorized
-Source modifications: Not authorized by this audit
-CI activation or workflow changes: Not authorized
-Dependency additions: Not authorized
-Governance modifications: Not authorized
-Native runner implementation: Not authorized
-Autonomous repair or merge: Not authorized
-Final authority: Repository Owner
-
----
-
-End of ZEAI-01 Repository Baseline Audit. 
+This audit supports documentation reconciliation and continued staged design. It does not establish readiness to execute untrusted workloads or authorize ZEAI production implementation, CI activation, dependency changes, autonomous repair, or merge.

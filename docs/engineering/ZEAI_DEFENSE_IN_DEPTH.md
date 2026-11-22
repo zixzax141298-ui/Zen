@@ -1,161 +1,94 @@
-ZEAI — Defense in Depth: Native Component Security & Sandbox Isolation
+# ZEAI — Defense in Depth: Native Component Security and Sandbox Isolation
 
-Status
+**Status:** OWNER-APPROVED ARCHITECTURAL DESIGN
+**Implementation status:** Partial orchestration foundation only; OS isolation not implemented/verified
 
-OWNER APPROVED — ARCHITECTURAL DESIGN
+## 1. Core Decision
 
-This document records the approved architectural direction for layered security in ZEN and ZEAI.
+ZEN security uses two complementary and independently verified layers:
 
-This approval is limited to architecture and design. It does not authorize implementation, production changes, security-policy modifications, or scope expansion.
+1. **Native Component Security** — each language/engineering component enforces its own contracts and validation.
+2. **Execution Isolation** — ZEAI Sandbox Isolation contains the impact of untrusted workloads.
 
-1. Core Principle
+Neither layer replaces the other. Passing component tests does not prove OS isolation; passing sandbox tests does not prove language component correctness.
 
-ZEN shall apply Defense in Depth through two complementary security layers:
+## 2. Native Component Responsibilities
 
-1. Native Component Security.
-2. Execution Isolation through ZEAI Sandbox Isolation.
+| Component | Responsibility |
+|---|---|
+| Lexer | Character processing, token recognition, lexical validation, input boundaries, diagnostics |
+| Parser | Grammar/syntax enforcement, nesting and recursion protection, syntax diagnostics |
+| AST | Canonical representation, node/child contracts, source identity, structural invariants |
+| ZASI | AST structural integrity, graph validation, cycle/reuse detection, structural limits |
+| Semantic Analysis | Semantic validation, symbol/scope checks, type constraints, diagnostics |
+| Compiler | Correct transformation between validated representations |
+| Runtime | Execution semantics, runtime validation, resource behavior, diagnostics |
+| ZEAI | Event validation, orchestration, verification coordination, sandbox invocation, evidence collection; not a replacement for component contracts |
 
-Neither layer replaces the responsibility of the other.
+## 3. Mandatory Sandbox Isolation
 
-Every component must enforce its own correctness, validation, and security contracts. Sandbox Isolation must contain the impact of workloads during execution.
+Sandbox Isolation is a mandatory foundation before ZEAI runs untrusted code, tests, generated artifacts, or bounded repair workloads.
 
-2. Native Component Ownership
+The approved Linux target is **gVisor `runsc`**. The backend must prove actual enforcement for the exact host and policy across:
 
-Component| Security and correctness responsibility
-Lexer| Character processing, token recognition, lexical validation, input boundaries, lexical diagnostics
-Parser| Grammar enforcement, syntax validation, nesting and recursion protection, syntax diagnostics
-AST| Canonical representation, node and child contracts, source identity, structural invariants
-ZASI| AST structural integrity, graph validation, cycle and reuse detection, structural resource limits
-Semantic Analysis| Semantic validation, symbol and scope checks, type constraints, semantic diagnostics
-Compiler| Correct and validated transformation of program representations
-Runtime| Execution semantics, runtime validation, execution behavior and diagnostics
+- Process containment and termination.
+- Filesystem/workspace isolation.
+- Network isolation (network disabled under the current contract).
+- CPU, memory, wall-clock, and output limits.
+- Secret/credential isolation.
 
-A component must not silently assume another component's responsibilities.
+Missing or unproven controls must reject execution. There is no silent fallback to `runc`, ordinary host execution, or a weaker backend. A capability declaration or policy object alone is not OS enforcement evidence.
 
-Security defects must be addressed at the correct architectural layer rather than hidden through unrelated workarounds.
+## 4. ZEAI Responsibility Separation
 
-3. ZEAI Sandbox Isolation
+| Subsystem | Responsibility |
+|---|---|
+| ZEAI Controller | Task orchestration, deterministic policy evaluation, authorization checks |
+| Native CI Engine | Actual contract, regression, adversarial, and integration verification |
+| Sandbox Isolation | OS-enforced workload containment |
+| Evidence Engine | Commit-bound, reviewable verification and enforcement records |
+| Owner | Final authority for protected changes, exceptions, and merge |
 
-Sandbox Isolation is a mandatory security foundation for ZEAI workloads involving untrusted code, tests, generated artifacts, or bounded repair operations.
+## 5. Independent Verification Questions
 
-Its responsibilities include enforced boundaries for:
+### A. Native Component Security
 
-- Process isolation.
-- Filesystem and workspace access.
-- Network access.
-- CPU, memory, wall-clock and output limits.
-- Secret and credential isolation.
-- Workload cleanup and containment.
+Does each component meet its own declared contract? Examples include malformed Lexer input, parser depth boundaries, invalid AST node/child structures, cycles/reused nodes, semantic rejection, compiler correctness, and runtime resource behavior.
 
-The target Linux isolation runtime is gVisor "runsc".
+### B. Sandbox Enforcement
 
-The execution policy is fail-closed:
+Does the actual host runtime enforce process, filesystem, network, resource, and secret boundaries? Verify the real `runsc` backend, not only a fake backend.
 
-- Missing or unproven mandatory controls must prevent execution.
-- No silent fallback to "runc".
-- No fallback to ordinary host execution.
-- Capability claims must be independently reviewable.
-- A policy declaration alone is not evidence of OS-level enforcement.
+Both answers require independent evidence tied to the tested commit, host, and policy.
 
-4. ZEAI Security Responsibilities
+## 6. Current Repository Evidence
 
-Subsystem| Responsibility
-ZEAI Controller| Task orchestration, policy evaluation and authorization
-Native CI Engine| Contract, regression, adversarial and integration verification
-Sandbox Isolation| Workload containment and execution boundaries
-Evidence Engine| Traceable records of verification and enforcement evidence
-Owner| Final authority for protected changes and merge approval
+**OBSERVED:** `src/zen/sandbox/` contains `contracts.py`, `policy.py`, and `runtime.py`. The runtime rejects execution when no backend is configured, rejects missing required capability controls or empty capability evidence, and validates request/environment/workspace constraints. `tests/test_sandbox.py` uses a fake backend to exercise policy/orchestration behavior.
 
-ZEAI must not self-approve protected changes, bypass governance, or grant itself additional authority.
+**NOT IMPLEMENTED / NOT VERIFIED:** Reviewed gVisor `runsc` backend; actual host process and filesystem isolation; enforced network and resource boundaries; independent host-level proof.
 
-5. Required Verification Separation
+The fake backend is test scaffolding, not a production isolation backend. The current foundation must not be described as completed Sandbox Isolation.
 
-Two independent verification questions must be answered:
+## 7. Architectural Constraints
 
-A. Native Component Security
+- Preserve component ownership and existing contracts.
+- Do not change grammar, AST semantics, or resource ceilings as part of sandbox work without separate Owner approval.
+- Do not add dependencies or Python–Rust integration without an approved Change Plan.
+- Do not execute untrusted workloads before the `runsc` enforcement gate passes.
+- No autonomous merge or Owner-approval bypass.
 
-Does each component satisfy its own declared contracts and security requirements?
+## 8. Future Acceptance Criteria
 
-Examples:
-
-- Malformed Lexer input.
-- Parser nesting and recursion boundaries.
-- Invalid AST node and child structures.
-- AST cycles and reused nodes.
-- Semantic validation failures.
-- Compiler transformation correctness.
-- Runtime safety and resource behavior.
-
-B. Sandbox Enforcement
-
-Does the execution environment actually enforce the required isolation controls?
-
-Examples:
-
-- Process containment.
-- Filesystem boundary enforcement.
-- Network isolation.
-- Resource enforcement.
-- Secret isolation.
-- Fail-closed behavior when a control is unavailable.
-
-Passing component tests does not prove OS isolation. Passing Sandbox tests does not prove component correctness.
-
-Both require independent evidence.
-
-6. Current Implementation Status
-
-OBSERVED:
-
-- Sandbox foundation and orchestration contracts exist in "src/zen/sandbox/".
-- The current runtime rejects execution when no reviewed backend is configured.
-- The existing contract explicitly states that OS enforcement is not implemented.
-
-NOT IMPLEMENTED:
-
-- Reviewed gVisor "runsc" backend.
-- Actual host-level process and filesystem isolation.
-- Enforced network and resource boundaries.
-
-NOT TESTED:
-
-- Independent host-level isolation verification.
-- Adversarial tests proving actual OS enforcement.
-
-The existence of the Sandbox foundation must not be represented as completed Sandbox Isolation.
-
-7. Architectural Constraints
-
-This design does not authorize:
-
-- Lexer, Parser, AST, ZASI, Semantic Analysis, Compiler, or Runtime modifications.
-- Grammar or language-semantic changes.
-- Changes to existing resource ceilings.
-- Changes to ZB-07 or ZIIF-01 scope or status.
-- New dependencies or Python–Rust integration.
-- Automatic merge or Owner approval bypass.
-- Implementation of the gVisor backend.
-
-Each implementation stage requires its own baseline, impact analysis, Change Plan, explicit Owner approval, and verification evidence.
-
-8. Acceptance Criteria for Future Implementation
-
-The future implementation must demonstrate:
-
-1. Every mandatory isolation control is enforced by the actual backend.
-2. Missing controls cause execution rejection.
-3. No weaker runtime fallback is possible.
+1. Mandatory controls are enforced by actual `runsc` backend.
+2. Missing controls reject execution.
+3. No weaker runtime fallback exists.
 4. Workloads cannot access unauthorized filesystem paths or secrets.
-5. Network and resource boundaries are enforced by the host-level runtime.
+5. Network and resource boundaries are host-enforced.
 6. Adversarial tests exercise the real isolation boundary.
-7. Evidence is independently reviewable and tied to the tested host and policy.
+7. Evidence is independently reviewable and tied to host, commit, and policy.
 8. Native component security remains independently verified.
 9. Owner approval remains mandatory for protected integration and merge.
 
-9. Final Architectural Decision
+## 9. Final Decision
 
-ZEN adopts Native Component Security + Execution Isolation as complementary layers of its security architecture.
-
-Every component remains responsible for its own integrity. ZEAI Sandbox Isolation protects the execution environment and limits the impact of untrusted workloads.
-
-This document records an approved architectural direction, not a claim of completed implementation or verified security enforcement.
+Native Component Security and ZEAI Sandbox Isolation are both mandatory and complementary. This document records an approved architectural direction, not completed implementation or verified enforcement.
