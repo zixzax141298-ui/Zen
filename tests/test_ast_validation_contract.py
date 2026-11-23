@@ -772,6 +772,56 @@ class AstValidationContractTests(unittest.TestCase):
             old_style.as_diagnostic().source_location
         )
 
+    def test_parameter_count_boundary_below_exact_and_above(self):
+        source_id = SourceIdentifier.new()
+
+        body = BlockStmt(
+            sp(6, 9),
+            (),
+            source_id=source_id,
+        )
+
+        function = FunctionDecl(
+            sp(1, 10),
+            "f",
+            ("x", "y"),
+            body,
+            source_id=source_id,
+            name_span=sp(1, 2),
+            parameter_spans=(sp(3, 4), sp(4, 5)),
+        )
+
+        program = Program(
+            sp(1, 10),
+            (function,),
+            source_id=source_id,
+        )
+
+        below = validate_ast(
+            program,
+            ASTValidationLimits(max_parameters=3),
+        )
+        exact = validate_ast(
+            program,
+            ASTValidationLimits(max_parameters=2),
+        )
+        above = validate_ast(
+            program,
+            ASTValidationLimits(max_parameters=1),
+        )
+
+        self.assertTrue(below.is_valid)
+        self.assertTrue(exact.is_valid)
+        self.assertEqual(below.parameter_count, 2)
+        self.assertEqual(exact.parameter_count, 2)
+
+        self.assertFalse(above.is_valid)
+        self.assertFalse(above.complete)
+        self.assertEqual(above.parameter_count, 2)
+        self.assertIn(
+            "AST_PARAMETER_LIMIT_EXCEEDED",
+            self.codes(above),
+        )
 
 if __name__ == "__main__":
     unittest.main()
