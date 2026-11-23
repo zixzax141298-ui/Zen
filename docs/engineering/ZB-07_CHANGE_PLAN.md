@@ -22,13 +22,15 @@ authorize commit, push, merge, release, deployment, or unrelated work.
 Repository: zixzax141298-ui/Zen
 
 Current implementation branch:
-`feature/zb07-aggregate-parameter-accounting`
+`feature/zb07-related-diagnostic-locations`
 
 Owner-reported branch creation base commit:
-`c946d0aea9a12649d574d5d4e3e9db7bf7778cab`
+`356a6cd42044ce666361eb0aad98cdb278c660b0`
 
 Owner-reported fetched `origin/main`:
-`c946d0aea9a12649d574d5d4e3e9db7bf7778cab`
+`356a6cd42044ce666361eb0aad98cdb278c660b0`
+
+The previous active baseline (`c946d0aea9a12649d574d5d4e3e9db7bf7778cab`) is superseded for this implementation and retained as historical evidence.
 
 The previous active baseline (`13e9cbebf20d72ebb629406befbc7c52191dfb9e`) is superseded for this implementation and retained as historical evidence.
 
