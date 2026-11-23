@@ -546,3 +546,26 @@ v2.0 work.
 ZB-07 remains OPEN until every approved acceptance criterion has traceable
 implementation and verification evidence, the complete diff is reviewed,
 and the Owner approves the final completion report.
+
+
+## 15. Owner-Approved Baseline Reconciliation — 2026-11-23
+
+**Decision:** ZB07-D02 — ACCEPTED.
+
+- Owner approval: 2026-11-23.
+- Repository: `zixzax141298-ui/Zen`.
+- Approved baseline: `8fa9a65efc534eb23d7fc63141100429bd169000`.
+- Implementation branch: `feature/zb07-v2-completion`.
+- Owner-reported local HEAD: `8fa9a65efc534eb23d7fc63141100429bd169000`.
+- Owner-reported fetched `origin/main`: `8fa9a65efc534eb23d7fc63141100429bd169000`.
+- Owner-reported working tree at branch creation: clean.
+- Branch creation: from the exact `origin/main` commit above.
+- Previous preparation baseline `ea2c148...` is superseded for
+  this reopened implementation; its historical records remain unchanged.
+- Scope: baseline/documentation reconciliation only.
+- No source-code verification or ZB-07 completion is implied.
+- No commit, push, merge, or PR creation is authorized by this
+  baseline decision alone.
+
+The baseline values are based on the Owner's Termux output.
+They must be rechecked against Git before implementation and commit.
