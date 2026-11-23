@@ -4,9 +4,15 @@
 **Workstream:** ZSS — Zen Structured Syntax
 **Document Type:** Engineering Design Baseline
 **Status:** OWNER-APPROVED DESIGN BASELINE
+**Owner Approval:** APPROVED
+**Approval Basis:** Explicit Owner approval through GitHub merge (PR #29).
+**Approval Status:** The merged document is approved by the Owner.
+**Merge Evidence:** PR #29 merged 2026-11-23T09:59:57Z (head `ef9975bd437c1e11c00dbb00a4786b72040c1815`).
 **Development Mode:** Documentation-only
 **Official Grammar:** Zen Language Specification v0.1.0
 **Repository:** zixzax141298-ui/Zen
+
+> Note: Owner approval of this design baseline does not claim that Parser or Semantic Analysis implementation is complete.
 
 ---
 
