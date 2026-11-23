@@ -660,11 +660,20 @@ def _validate_ast(
         code: str,
         message: str,
         node: object | None = None,
+        *,
+        related_nodes: tuple[object, ...] = (),
     ) -> None:
         location = (
             _node_location(node)
             if isinstance(node, Node)
             else None
+        )
+        related_locations = tuple(
+            related
+            for candidate in related_nodes
+            if isinstance(candidate, Node)
+            for related in (_node_location(candidate),)
+            if related is not None
         )
 
         diagnostics.append(
@@ -673,6 +682,7 @@ def _validate_ast(
                 message=message,
                 component="ZASI",
                 source_location=location,
+                related_locations=related_locations,
             )
         )
 
@@ -782,6 +792,7 @@ def _validate_ast(
                     "AST_SOURCE_ID_MISMATCH",
                     "all nodes in one compilation unit must share its SourceIdentifier",
                     node,
+                    related_nodes=(root,),
                 )
 
         else:
@@ -860,18 +871,40 @@ def _validate_ast(
             break
 
         if span_valid and children_complete:
-            try:
-                require_ordered_children(
-                    node,
-                    tuple(children),
-                    "children",
-                )
-            except (TypeError, ValueError):
-                emit(
-                    "AST_SOURCE_ORDER_INVALID",
-                    "child spans must be contained, ordered, and non-overlapping",
-                    node,
-                )
+            previous_child = None
+            previous_span = None
+
+            for child in children:
+                child_span = getattr(child, "span", None)
+
+                if not isinstance(child_span, SourceSpan):
+                    continue
+
+                try:
+                    child_span.__post_init__()
+                except (TypeError, ValueError):
+                    continue
+
+                if not span.contains(child_span):
+                    emit(
+                        "AST_SOURCE_ORDER_INVALID",
+                        "child span must be contained in its parent span",
+                        child,
+                        related_nodes=(node,),
+                    )
+                elif (
+                    previous_span is not None
+                    and child_span.start < previous_span.end
+                ):
+                    emit(
+                        "AST_SOURCE_ORDER_INVALID",
+                        "child spans must be ordered and non-overlapping",
+                        child,
+                        related_nodes=(previous_child,),
+                    )
+
+                previous_child = child
+                previous_span = child_span
 
         stack.append((node, depth, True))
 

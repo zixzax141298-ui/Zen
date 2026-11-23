@@ -10,6 +10,7 @@ from zen.ast import (
     LiteralExpr,
     Program,
     SourceIdentifier,
+    SourceLocation,
     SourceSpan,
     UnaryExpr,
     validate_ast,
@@ -93,9 +94,31 @@ class AstValidationContractTests(unittest.TestCase):
             SourceIdentifier.new(),
         )
 
+        result = validate_ast(program)
+
         self.assertIn(
             "AST_SOURCE_ID_MISMATCH",
-            self.codes(validate_ast(program)),
+            self.codes(result),
+        )
+
+        diagnostic = next(
+            item
+            for item in result.diagnostics
+            if item.code == "AST_SOURCE_ID_MISMATCH"
+        )
+
+        mismatched_node = program.statements[0]
+
+        self.assertEqual(
+            diagnostic.source_location,
+            SourceLocation(
+                mismatched_node.source_id,
+                mismatched_node.span,
+            ),
+        )
+        self.assertEqual(
+            diagnostic.related_locations,
+            (SourceLocation(program.source_id, program.span),),
         )
 
     def test_invalid_source_identity_type_is_rejected(self):
@@ -246,9 +269,26 @@ class AstValidationContractTests(unittest.TestCase):
             (first, second),
         )
 
+        result = validate_ast(program)
+
         self.assertIn(
             "AST_SOURCE_ORDER_INVALID",
-            self.codes(validate_ast(program)),
+            self.codes(result),
+        )
+
+        diagnostic = next(
+            item
+            for item in result.diagnostics
+            if item.code == "AST_SOURCE_ORDER_INVALID"
+        )
+
+        self.assertEqual(
+            diagnostic.source_location,
+            SourceLocation(source_id, second.span),
+        )
+        self.assertEqual(
+            diagnostic.related_locations,
+            (SourceLocation(source_id, first.span),),
         )
 
     def test_all_resource_dimensions_are_bounded(self):
@@ -890,6 +930,45 @@ class AstValidationContractTests(unittest.TestCase):
         self.assertTrue(above.is_valid)
         self.assertTrue(above.complete)
         self.assertEqual(above.parameter_count, 2)
+
+    def test_child_outside_parent_reports_related_location(self):
+        source_id = SourceIdentifier.new()
+
+        child = ExpressionStmt(
+            sp(11, 15),
+            LiteralExpr(
+                sp(12, 14),
+                1,
+                source_id=source_id,
+            ),
+            source_id=source_id,
+        )
+
+        # Construct a valid Program first, then simulate a corrupted
+        # parent span so validate_ast can inspect the invalid structure.
+        program = Program(
+            sp(1, 20),
+            (child,),
+            source_id=source_id,
+        )
+        object.__setattr__(program, "span", sp(1, 10))
+
+        result = validate_ast(program)
+
+        diagnostic = next(
+            item
+            for item in result.diagnostics
+            if item.code == "AST_SOURCE_ORDER_INVALID"
+        )
+
+        self.assertEqual(
+            diagnostic.source_location,
+            SourceLocation(source_id, child.span),
+        )
+        self.assertEqual(
+            diagnostic.related_locations,
+            (SourceLocation(source_id, program.span),),
+        )
 
 if __name__ == "__main__":
     unittest.main()
