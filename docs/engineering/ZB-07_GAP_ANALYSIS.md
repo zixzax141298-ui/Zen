@@ -2,8 +2,8 @@
 
 Version: 1.0
 Milestone: ZB-07
-Status: PRELIMINARY — based on source inspection
-Verification: NOT_TESTED for reopened v2.0
+Status: HISTORICAL PRELIMINARY SNAPSHOT — superseded by Section 6 below
+Current baseline: `e425d0a2a356a3e3d87e8b56987c6b5d36ea463a`
 
 ## 1. Purpose
 
@@ -118,3 +118,126 @@ The primary implementation gap is FunctionDecl source metadata and its
 canonical validation contract. Legacy compatibility, resource boundary
 coverage, fingerprint regression protection, and reopened verification
 evidence must be completed before ZB-07 can close.
+
+## 6. Current Gap Reconciliation — 2026-11-23
+
+Baseline: `e425d0a2a356a3e3d87e8b56987c6b5d36ea463a`.
+
+The original GAP-ZB07 identifiers and definitions are retained. This
+section updates their status using integrated PR history and EVD-ZB07-003.
+The earlier preliminary sections remain historical records.
+
+### GAP-ZB07-01 — FunctionDecl source metadata
+
+**Implementation status: RESOLVED IN INTEGRATED IMPLEMENTATION.**
+**Verification status: PARTIALLY_VERIFIED.**
+
+Evidence:
+- PR #18 bounded FunctionDecl metadata validation.
+- Canonical validation covers required metadata and parameter-span
+  constraints.
+- PR #23 adds related diagnostic locations for span/identity conflicts.
+- Regression suite passed on the recorded main baseline.
+
+Remaining:
+- Complete acceptance mapping for keyword-only optional metadata,
+  positional constructor compatibility, metadata presence, span types,
+  parameter count, containment, order and non-overlap.
+- Confirm all related cases in the final verification matrix.
+
+### GAP-ZB07-02 — Legacy adapter behavior with missing FunctionDecl metadata
+
+**Implementation status: IMPLEMENTED IN CURRENT INTEGRATION.**
+**Verification status: PARTIALLY_VERIFIED.**
+
+The adapter and legacy compatibility tests are present in the integrated
+implementation and regression suite.
+
+Remaining:
+- Trace both-absent metadata behavior.
+- Trace partially present and malformed metadata rejection.
+- Confirm supplied metadata is preserved exactly.
+- Confirm adapted trees without required metadata still fail canonical
+  validation.
+- Confirm no source offsets are inferred from names or parameter strings.
+
+No metadata invention is permitted.
+
+### GAP-ZB07-03 — Boundary-test completeness
+
+**Implementation status: PARTIALLY ADDRESSED.**
+**Verification status: PARTIALLY_VERIFIED.**
+
+Evidence:
+- PR #20 enforces ParseContext initial depth and node resource bounds.
+- PR #21 covers parameter accounting boundaries.
+- PR #22 covers aggregate parameter accounting.
+- Existing AST limit tests cover additional resource dimensions.
+
+Remaining:
+- Complete the limit-1, exact-limit and limit+1 matrix for total nodes,
+  AST depth, expression nodes, statement nodes, parameter count and
+  direct-child count.
+- Complete corresponding parser-depth and parser-node-count coverage.
+- Do not increase production ceilings to make tests pass.
+
+### GAP-ZB07-04 — Fingerprint regression protection
+
+**Implementation status: IMPLEMENTED.**
+**Verification status: PARTIALLY_VERIFIED.**
+
+Evidence:
+- PR #19 adds regression protection for FunctionDecl source metadata
+  exclusion from the fingerprint-v1 structural digest.
+- `test_function_source_metadata_is_excluded_from_v1_fingerprint`
+  passed in the recorded regression suite.
+
+Remaining:
+- Preserve the existing fingerprint-v1 schema, encoding and digest
+  contract.
+- Retain the regression test in the final acceptance traceability.
+
+No fingerprint version or encoding change is authorized.
+
+### GAP-ZB07-05 — Verification evidence
+
+**Implementation status: EVIDENCE RECORDED.**
+**Verification status: PARTIALLY_VERIFIED.**
+
+EVD-ZB07-003 records:
+- Python 3.14.10 on Android / Termux, Linux aarch64.
+- `py_compile` completed without reported error.
+- `unittest`: 176 tests, OK.
+- Full pytest: 176 passed, 87 subtests passed.
+- Standalone performance test: 1 passed.
+- 2,001-node measurements from two separate executions.
+- Matching local HEAD and origin/main at the recorded baseline.
+
+Remaining:
+- Exact execution time and separately captured exit codes were not
+  recorded.
+- Remote CI status is not established by local Termux results.
+- Cross-platform behavior is not established.
+- Performance values must remain observations, not improvement claims.
+- Final diff and acceptance traceability remain required.
+
+## 7. Remaining Milestone Gaps
+
+1. Complete acceptance-criterion mapping for ZB07-01 through ZB07-11.
+2. Complete resource boundary matrix for every applicable dimension.
+3. Finish legacy adapter and FunctionDecl metadata edge-case traceability.
+4. Review fingerprint-v1 and resource-ceiling preservation in the final diff.
+5. Keep local Termux, remote CI and cross-platform evidence distinct.
+6. Complete final repository review and Owner-approved completion report.
+
+## 8. Conclusion
+
+The historical FunctionDecl metadata implementation gap is resolved in
+the integrated implementation. Fingerprint regression protection and
+several resource-boundary changes are also integrated.
+
+The remaining work is requirement-level verification, complete boundary
+coverage, evidence traceability and final review.
+
+ZB-07 remains IN_PROGRESS and OPEN. This reconciliation does not declare
+the milestone complete.

@@ -6,8 +6,8 @@
 Milestone: ZB-07
 Plan version: 2.0
 Plan status: OWNER-APPROVED
-Implementation status: IN_PROGRESS — patch preparation
-Verification status: NOT_TESTED for this reopened implementation
+Implementation status: IN_PROGRESS — PR #18–#23 changes integrated; remaining acceptance work open
+Verification status: PARTIALLY_VERIFIED — requirement-level review remains open
 Priority: HIGHEST ACTIVE MILESTONE
 
 This plan supersedes the stale implementation instructions in the earlier
@@ -21,14 +21,17 @@ authorize commit, push, merge, release, deployment, or unrelated work.
 
 Repository: zixzax141298-ui/Zen
 
-Current implementation branch:
-`feature/zb07-related-diagnostic-locations`
+Current documentation reconciliation branch:
+`feature/zb07-evidence-reconciliation`
+
+Current implementation baseline branch:
+`main` / `origin/main`
 
 Owner-reported branch creation base commit:
-`356a6cd42044ce666361eb0aad98cdb278c660b0`
+`e425d0a2a356a3e3d87e8b56987c6b5d36ea463a`
 
 Owner-reported fetched `origin/main`:
-`356a6cd42044ce666361eb0aad98cdb278c660b0`
+`e425d0a2a356a3e3d87e8b56987c6b5d36ea463a`
 
 The previous active baseline (`c946d0aea9a12649d574d5d4e3e9db7bf7778cab`) is superseded for this implementation and retained as historical evidence.
 
@@ -353,3 +356,55 @@ merge, create a PR, release, or deploy.
 The Owner applies the patch in Termux, performs the requested commit and
 push after the complete patch handoff, and then supplies post-push test
 results for review.
+
+## 14. Evidence Reconciliation — 2026-11-23
+
+**Purpose:** Synchronize the active plan with implementation integrated
+through PR #23 and the Owner-reported Termux verification on the current
+main baseline.
+
+**Current baseline:**
+- Repository: `zixzax141298-ui/Zen`.
+- Baseline branch: `main`.
+- Baseline commit: `e425d0a2a356a3e3d87e8b56987c6b5d36ea463a`.
+- Documentation branch: `feature/zb07-evidence-reconciliation`.
+- The Owner confirmed local HEAD and `origin/main` matched.
+- The Owner reported a clean working tree before creating this branch.
+
+**Integrated implementation history:**
+- PR #18: bounded FunctionDecl metadata validation.
+- PR #19: FunctionDecl metadata fingerprint-v1 regression protection.
+- PR #20: ParseContext initial resource-bound enforcement.
+- PR #21: parameter accounting boundary coverage.
+- PR #22: aggregate parameter accounting coverage.
+- PR #23: related diagnostic locations for source identity and span conflicts.
+
+These PR references establish repository history and scope. They do not
+individually establish that every ZB-07 acceptance criterion is complete.
+
+**Owner-reported local verification on 2026-11-23 (+07:00):**
+- Python: 3.14.10.
+- Platform: Android / Termux, Linux aarch64.
+- `python -m py_compile src/zen/ast/*.py src/zen/parser/*.py`: completed
+  without reported error.
+- `python -m unittest discover -s tests -v`: 176 tests, OK.
+- `python -m pytest -q`: 176 passed, 87 subtests passed.
+- `python -m pytest -q -s tests/test_ast_validation_performance.py`:
+  1 passed; 2,001 nodes; elapsed 0.177319 seconds;
+  validation peak 281,497 bytes.
+- Local HEAD and `origin/main` both matched the baseline above.
+- Working tree was reported clean before this documentation branch.
+
+Exact wall-clock execution time and separately captured shell exit-code
+values were not recorded. These are local Owner-reported results, not
+remote CI results.
+
+**Status interpretation:**
+- Implementation for the listed PR scopes is integrated into main.
+- The current regression and measurement results provide partial
+  verification evidence.
+- Requirement-level verification remains open until every acceptance
+  criterion is mapped to sufficient evidence.
+- No ZB-07 completion or closure is authorized by this reconciliation.
+
+Historical baseline and reopening records above remain preserved.

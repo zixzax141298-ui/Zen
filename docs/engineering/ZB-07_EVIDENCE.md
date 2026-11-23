@@ -7,8 +7,8 @@
 Document type: Initial manual engineering evidence ledger
 Milestone: ZB-07
 Ledger status: REOPENED — ZB-07 v2.0 evidence in progress.
-Implementation status: Historical ZB-07 implementation remains recorded below; reopened v2.0 changes are not yet verified.
-Verification status: NOT_TESTED for the reopened v2.0 acceptance criteria. Historical test records below are preserved and are not evidence for the reopened patch.
+Implementation status: Historical implementation and PR #18–#23 integration are recorded; requirement-level completion remains open.
+Verification status: PARTIALLY_VERIFIED on the 2026-11-23 main baseline. Historical records remain preserved and are not relabeled as current evidence.
 
 Approved technical baseline commit:
 
@@ -508,7 +508,7 @@ The FunctionDecl source metadata contract was incomplete in the inspected
 baseline. ZB07-05 therefore remains a specific implementation and verification
 focus.
 
-### Reopened evidence status
+### Reopened evidence status — historical snapshot; superseded by Section 16
 
 | Requirement | Preliminary implementation observation | Reopened verification |
 |---|---|---|
@@ -524,7 +524,7 @@ focus.
 | ZB07-10 | PARTIAL; complete boundary matrix required | NOT_TESTED |
 | ZB07-11 | Iterative implementation and non-gating measurement test present | NOT_TESTED |
 
-### Reopened verification record
+### Reopened verification record — historical snapshot; superseded by Section 16
 
 No reopened v2.0 test result is recorded here yet.
 
@@ -569,3 +569,87 @@ and the Owner approves the final completion report.
 
 The baseline values are based on the Owner's Termux output.
 They must be rechecked against Git before implementation and commit.
+
+## 16. Current Main Baseline Evidence Reconciliation — 2026-11-23
+
+This section supersedes the earlier reopened-status snapshot in Sections
+13–15 for the current main baseline. Earlier historical records remain
+preserved and are not rewritten as if they never existed.
+
+### Integrated implementation references
+
+The Owner confirmed PR #23 was merged. The relevant integrated PR scopes:
+
+| PR | Scope |
+|---|---|
+| #18 | Bounded FunctionDecl metadata validation |
+| #19 | FunctionDecl source metadata excluded from fingerprint-v1 digest |
+| #20 | ParseContext initial resource-bound enforcement |
+| #21 | Parameter accounting boundary tests |
+| #22 | Aggregate parameter accounting tests |
+| #23 | Related diagnostic locations |
+
+These PR scopes establish integration history, not automatic completion
+of every ZB-07 acceptance criterion.
+
+### EVD-ZB07-003 — Main baseline regression and performance evidence
+
+**Revision and environment**
+
+- Date: 2026-11-23 (+07:00).
+- Exact execution time: Not captured.
+- Repository: `zixzax141298-ui/Zen`.
+- Branch during baseline verification: `main`.
+- Commit: `e425d0a2a356a3e3d87e8b56987c6b5d36ea463a`.
+- OS: Android / Termux, Linux aarch64.
+- Python: 3.14.10.
+- Kernel reported:
+  `Linux localhost 6.1.172-android14-11-g1c369adfa332-ab16037590 #1 SMP PREEMPT Fri Aug 7 10:26:45 UTC 2026 aarch64 Android`.
+
+**Owner-reported commands and results**
+
+1. `python -m py_compile src/zen/ast/*.py src/zen/parser/*.py`
+   - Completed without reported error.
+
+2. `python -m unittest discover -s tests -v`
+   - 176 tests ran.
+   - Result: `OK`.
+   - The measurement test during discovery reported:
+     2,001 nodes, 0.157795 seconds, 263,145 peak bytes.
+
+3. `python -m pytest -q`
+   - 176 passed.
+   - 87 subtests passed.
+
+4. `python -m pytest -q -s tests/test_ast_validation_performance.py`
+   - 1 passed.
+   - 2,001 nodes.
+   - Elapsed time: 0.177319 seconds.
+   - Validation peak memory: 281,497 bytes.
+
+5. Git baseline:
+   - Local HEAD:
+     `e425d0a2a356a3e3d87e8b56987c6b5d36ea463a`.
+   - `origin/main`:
+     `e425d0a2a356a3e3d87e8b56987c6b5d36ea463a`.
+   - Owner reported clean working tree on main before creating the
+     documentation reconciliation branch.
+
+**Evidence limitations**
+
+- Exact wall-clock execution time and separately captured shell exit
+  codes were not recorded.
+- These are Owner-reported local Termux results, not remote CI results.
+- No cross-platform run is established by this evidence.
+- The two performance measurements are separate observations, not a
+  controlled comparison and not evidence of performance improvement.
+- The full suite passing does not establish that every individual
+  acceptance criterion has complete coverage.
+
+### Current interpretation
+
+- PR #18–#23 implementation scopes are integrated into main.
+- Local regression and performance evidence exists for the recorded
+  baseline.
+- Requirement-level acceptance remains partially verified.
+- ZB-07 remains OPEN. No milestone closure is implied or authorized.
