@@ -4,16 +4,17 @@
 
 Milestone: ZIIF-01 — Canonical AST Identity Fingerprint
 
-Status: IMPLEMENTATION APPLIED — LOCAL TESTS PASSED; FINAL REVIEW PENDING
+Status: IMPLEMENTATION MERGED — REGRESSION TESTS EXPANDED; FINAL ACCEPTANCE PENDING
 
-Verification status: LOCAL_TESTS_PASSED
+Verification status: LOCAL_TESTS_PASSED; REGRESSION_EXPANSION_MERGED; FINAL_ACCEPTANCE_PENDING
 
 Baseline branch: `feature/ziif-01-ast-fingerprint`
 
 Baseline commit: `a62f4e904adfc9f9ae1e2d15b1d0d8e57fc5d676`
 
-Working-tree identity: uncommitted changes based on the baseline commit above.
-No commit SHA exists for the implementation at the time of these test runs.
+Historical implementation test runs were performed on an uncommitted working tree based on the baseline commit above.
+The implementation was subsequently merged through PR #9 (merge commit `ea2c14841540ce236d9c74d45401e47abe9982f7`).
+The PR #26 regression-test expansion was committed as `4925656` and merged into main through merge commit `803c245`.
 
 This ledger distinguishes observed test results from unverified acceptance
 criteria. Code presence and passing regression tests do not independently
@@ -68,7 +69,7 @@ increase.
 | Fingerprint tests | Present in local working tree | Focused test command passed |
 | Change Plan | Present and updated | Repository document |
 | Evidence ledger | Present and updated | This document |
-| Governance references | Updated in this change set | Pending staged-diff review |
+| Governance references | Updated in historical implementation PR #9 | PR #9 merge: `ea2c14841540ce236d9c74d45401e47abe9982f7`; not part of current PR #2 |
 
 ## 6. Verification Register
 
@@ -136,9 +137,29 @@ The following remain pending or require more specific evidence:
 Passing the regression suite is not treated as proof of every individual
 acceptance criterion.
 
+### PR #26 checklist reconciliation — 2026-11-23
+
+The original checklist above records the evidence position before PR #26.
+The following items received additional regression evidence in PR #26:
+
+- Domain separator and version byte inclusion: covered by a dedicated regression test.
+- Tuple ordering: covered by a dedicated regression test.
+- Explicit `None` marker: covered by a direct marker assertion.
+- Declared schemas and field order: the mapping test checks declarations for all 15 canonical node types.
+
+The following remain unverified:
+
+- Runtime encoding behavior independently exercised for every canonical node type.
+- Exhaustive runtime field-order behavior.
+- Complete primitive encoding matrix.
+- Complete invalid/incomplete AST failure-mode matrix.
+
+The historical checklist is retained rather than rewritten so the evidence
+history remains auditable.
+
 ## 8. Limitations
 
-- The recorded test runs were performed on an uncommitted local working tree.
+- Historical PR #9 test runs were performed on an uncommitted local working tree. PR #26 has separate committed-test evidence recorded in Sections 10–12.
 - No implementation commit SHA existed at the time of those test runs.
 - No remote CI result is recorded.
 - No performance or memory improvement is claimed.
@@ -162,3 +183,78 @@ Before commit:
 After commit and push, record the actual commit SHA and verify that the remote
 branch resolves to the same SHA. Do not claim remote verification before
 observing the remote reference.
+
+
+## 10. EVD-ZIIF01-005 — PR #26 Focused Regression Tests
+
+- Date: 2026-11-23 (+07:00).
+- PR: #26 — Complete ZIIF-01 fingerprint regression tests.
+- Test branch: `feature/ziif01-test-completion`.
+- Test commit: `4925656`.
+- Merge commit on main: `803c245`.
+- Environment: Android / Termux; Python 3.14.10; pytest 9.2.0.
+- Command: `PYTHONPATH=src python -m pytest tests/test_ast_identity_fingerprint.py -v`.
+- Result: `19 passed in 0.18s`.
+- Additional syntax check: `python -m py_compile tests/test_ast_identity_fingerprint.py` succeeded.
+- Additional whitespace check: `git diff --check` produced no errors.
+- Execution source: locally executed by the Owner in Termux.
+
+The expanded tests cover:
+- Domain separator and version byte inclusion.
+- Tuple ordering.
+- Explicit `None` marker.
+- Declared schemas and field order for all 15 canonical node types.
+- Missing required FunctionDecl metadata.
+- Invalid AST child type.
+
+The schema test verifies the declared schema mapping. It does not
+independently exercise runtime encoding for every node type.
+
+## 11. EVD-ZIIF01-006 — Full Regression Suite After PR #26
+
+- Date: 2026-11-23 (+07:00).
+- Branch: `feature/ziif01-test-completion`.
+- Tested commit: `4925656`.
+- Environment: Android / Termux; Python 3.14.10; pytest 9.2.0.
+- Command: `PYTHONPATH=src python -m pytest -v`.
+- Result: `189 passed, 87 subtests passed in 0.97s`.
+- Execution source: locally executed by the Owner in Termux.
+
+This result is local Termux evidence. It is not a remote CI result.
+
+## 12. EVD-ZIIF01-007 — PR #26 Merge and Repository State
+
+- PR: #26.
+- Title: `Complete ZIIF-01 fingerprint regression tests`.
+- Observed status: merged.
+- Merge commit: `803c245`.
+- Test commit: `4925656`.
+- Files changed by PR #26: `tests/test_ast_identity_fingerprint.py` only.
+- Change: 229 insertions.
+- Owner-provided post-push repository output showed the local branch tracking
+  `origin/feature/ziif01-test-completion` with a clean working tree.
+- The Owner's GitHub screenshot showed PR #26 as merged into `main`.
+
+## 13. Remaining Evidence Gaps
+
+The following are not established as complete by PR #26:
+
+- Independent runtime encoding coverage for every canonical node type.
+- Exhaustive primitive encoding coverage.
+- Complete invalid/incomplete AST failure-mode matrix.
+- Final independent review of the complete ZIIF-01 implementation contract.
+- Remote CI verification for the relevant historical implementation and
+  test commits.
+- Governance status reconciliation.
+
+The governance files are intentionally outside the scope of PR #26 and
+the current documentation-only PR #2.
+
+## 14. Current Acceptance Position
+
+PR #26 expands regression coverage and passes the Owner's local full suite.
+It does not by itself establish final ZIIF-01 acceptance.
+
+Final acceptance remains pending until the remaining contract, failure-mode,
+evidence, and governance questions have been reviewed and resolved under
+separately authorized scope.
