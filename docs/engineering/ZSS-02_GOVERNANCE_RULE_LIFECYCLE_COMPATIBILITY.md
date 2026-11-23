@@ -2,16 +2,17 @@
 
 **Document ID:** ZSS-02
 **Revision:** 2
-**Status:** REVIEW REQUIRED — RECONSTRUCTED DRAFT
+**Status:** OWNER-APPROVED (CONSOLIDATED RESULT)
+**Owner Approval:** APPROVED
+**Approval Basis:** Explicit Owner approval through GitHub merge (PR #30). The Owner has explicitly approved the consolidated ZSS-02 result.
+**Approval Status:** The merged document is approved by the Owner.
+**Merge Evidence:** PR #30 merged 2026-11-23T16:59:35Z (head `98d2998f6dee8b1fe711525ca944b22adc7c2f21`).
 **Project:** ZEN — Zen Structured Syntax
 **Scope:** Governance and Specification
 **Implementation:** NOT AUTHORIZED
 **Migration Execution:** NOT AUTHORIZED
 
-> IMPORTANT: This is a reconstructed review draft based on recovered
-> decisions. It has not been verified as a verbatim copy of the
-> Owner-approved Revision 2 text. Do not treat this exact wording as
-> finally approved until the Owner verifies it.
+> PROVENANCE NOTE: This on-disk text is a reconstructed consolidation based on recovered decisions. It has **not** been verified as a verbatim copy of any earlier Owner-approved Revision 2 wording. Owner approval applies to the **consolidated ZSS-02 result** as merged. Verbatim historical identity with a prior Revision 2 text remains **unverified**.
 
 ## 1. Purpose
 
@@ -430,9 +431,9 @@ Document: ZSS-02 — Governance, Rule Lifecycle & Compatibility
 
 Revision: 2
 
-Original specification status: OWNER-APPROVED FINAL SPECIFICATION
+Owner Approval: APPROVED (consolidated result via GitHub merge PR #30).
 
-This reconstructed draft incorporates the recovered corrections:
+This reconstructed text incorporates the recovered corrections:
 
 - CR-01: Registry status must be traceable to its Governance Record
   or underlying governance decision.
@@ -444,13 +445,14 @@ This reconstructed draft incorporates the recovered corrections:
 - CR-05: Immutable historical Grammar Version content is distinct
   from mutable governance metadata.
 
-This draft does not independently establish approval of this exact
-wording or authorize implementation, migration execution, or changes
-to other workstreams.
+Owner approval applies to the consolidated ZSS-02 result as merged.
+Verbatim identity with any earlier Revision 2 manuscript remains unverified.
+This document does not authorize implementation, migration execution, or
+changes to other workstreams.
 
 Any future revision must follow the applicable governance
 and approval process.
 
 ---
 
-END OF RECONSTRUCTED ZSS-02 REVISION 2 REVIEW DRAFT
+END OF ZSS-02 REVISION 2 (OWNER-APPROVED CONSOLIDATED RESULT)
