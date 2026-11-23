@@ -134,44 +134,72 @@ architecture:
     semantic_analysis_silently_mutates_validated_ast: false
 
 active_milestone:
-  id: "ZB-07"
-  name: "AST Semantic Readiness & Source Identity Contract"
-  status: "REOPENED_OWNER_APPROVED_IMPLEMENTATION_AND_VERIFICATION_IN_PROGRESS"
+  id: "ZSS"
+  name: "Zen Structured Syntax"
+  status: "ACTIVE_OWNER_APPROVED_SPECIFICATION_AND_DOCUMENTATION"
   priority: "HIGHEST"
-  baseline_commit: "e425d0a2a356a3e3d87e8b56987c6b5d36ea463a"
-  baseline_branch: "origin/main"
-  change_plan: "docs/engineering/ZB-07_CHANGE_PLAN.md"
-  evidence_ledger: "docs/engineering/ZB-07_EVIDENCE.md"
   scope:
-    - "Explicit immutable source identity and source-location separation"
-    - "Non-mutating legacy AST adaptation without invented FunctionDecl metadata"
-    - "FunctionDecl name_span and parameter_spans canonical contract"
-    - "Source-order and span integrity validation"
-    - "Unified deterministic iterative AST validation"
-    - "Node, child, graph, cycle, and reuse validation"
-    - "Independent AST and parser resource accounting"
-    - "Boundary tests without increasing numeric ceilings"
-    - "Regression preservation of the existing ZIIF-01 fingerprint contract"
-    - "Requirement audit, gap analysis, verification matrix, and completion report"
-  exclusions:
-    - "SECURITY.md changes"
-    - "Grammar redesign"
-    - "Parser implementation redesign"
-    - "Runtime, Semantic Analysis, optimizer, or IR implementation"
-    - "Dependency changes"
-    - "Resource-limit increases"
-    - "Identity Registry or persistent global node identity implementation"
-    - "ZIIF-01 follow-on feature work"
-    - "Commit, push, merge, release, or deployment"
-  paused_milestone:
-    id: "ZIIF-01"
-    status: "PAUSED_UNTIL_ZB07_COMPLETION"
-    preserve_existing_implementation: true
-    preserve_fingerprint_v1_contract: true
-  previous_zb07_implementation:
-    implementation_commit: "a6f3770f50dd5f7cb637cd7239220f07eecf6414"
-    historical_merged_main_commit: "a62f4e904adfc9f9ae1e2d15b1d0d8e57fc5d676"
-    historical_closure_is_not_reopened_completion: true
+    - "ZSS syntax architecture and specification governance"
+    - "Rule identity and revision governance"
+    - "Rule lifecycle and evolution specification"
+    - "Immutable grammar version and rule manifest governance"
+    - "Directional compatibility and migration governance"
+    - "Documentation, traceability, and auditability"
+  completed_milestones:
+    - id: "ZSS-01"
+      name: "Grammar Baseline & Design Foundation"
+      status: "COMPLETED_OWNER_APPROVED_MERGED"
+      document: "docs/engineering/ZSS-01_GRAMMAR_BASELINE.md"
+      preserve_unchanged: true
+  approved_specifications:
+    - id: "ZSS-02"
+      name: "Governance, Rule Lifecycle & Compatibility"
+      status: "OWNER_APPROVED_FINAL_SPECIFICATION"
+      implementation_authorized: false
+      migration_execution_authorized: false
+  paused_workstreams:
+    - id: "ZB-07"
+      name: "AST Semantic Readiness & Source Identity Contract"
+      status: "PAUSED_BY_OWNER_DIRECTION"
+      previous_status: "REOPENED_OWNER_APPROVED_IMPLEMENTATION_AND_VERIFICATION_IN_PROGRESS"
+      priority_before_pause: "HIGHEST"
+      baseline_commit: "e425d0a2a356a3e3d87e8b56987c6b5d36ea463a"
+      baseline_branch: "origin/main"
+      change_plan: "docs/engineering/ZB-07_CHANGE_PLAN.md"
+      evidence_ledger: "docs/engineering/ZB-07_EVIDENCE.md"
+      scope:
+        - "Explicit immutable source identity and source-location separation"
+        - "Non-mutating legacy AST adaptation without invented FunctionDecl metadata"
+        - "FunctionDecl name_span and parameter_spans canonical contract"
+        - "Source-order and span integrity validation"
+        - "Unified deterministic iterative AST validation"
+        - "Node, child, graph, cycle, and reuse validation"
+        - "Independent AST and parser resource accounting"
+        - "Boundary tests without increasing numeric ceilings"
+        - "Regression preservation of the existing ZIIF-01 fingerprint contract"
+        - "Requirement audit, gap analysis, verification matrix, and completion report"
+      exclusions:
+        - "SECURITY.md changes"
+        - "Grammar redesign"
+        - "Parser implementation redesign"
+        - "Runtime, Semantic Analysis, optimizer, or IR implementation"
+        - "Dependency changes"
+        - "Resource-limit increases"
+        - "Identity Registry or persistent global node identity implementation"
+        - "ZIIF-01 follow-on feature work"
+        - "Commit, push, merge, release, or deployment"
+      previous_implementation:
+        implementation_commit: "a6f3770f50dd5f7cb637cd7239220f07eecf6414"
+        historical_merged_main_commit: "a62f4e904adfc9f9ae1e2d15b1d0d8e57fc5d676"
+        historical_closure_is_not_reopened_completion: true
+      preserve_implementation: true
+      preserve_change_plan: true
+      preserve_evidence: true
+    - id: "ZIIF-01"
+      name: "Canonical AST Identity Fingerprint"
+      status: "PAUSED"
+      preserve_existing_implementation: true
+      preserve_fingerprint_v1_contract: true
   scope_expansion_requires_owner_approval: true
 
 resource_limits:
