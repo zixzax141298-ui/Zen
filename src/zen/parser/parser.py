@@ -269,6 +269,7 @@ class _Parser:
 
     def _block(self) -> BlockStmt:
         start = self._consume(TokenType.LEFT_BRACE, "Expected '{'")
+        previous_ctx = self.ctx
         self.ctx = self.ctx.enter(self._token_span(start))
 
         statements: list[Statement] = []
@@ -286,7 +287,11 @@ class _Parser:
         end = self._consume(TokenType.RIGHT_BRACE, "Expected '}' after block")
 
         span = self._span_from_tokens(start, end)
-        self.ctx = self.ctx.track_node(span)
+        self.ctx = ParseContext(
+            depth=previous_ctx.depth,
+            node_count=self.ctx.node_count,
+            source_id=self.source_id,
+        ).track_node(span)
         return BlockStmt(
             span=span,
             statements=tuple(statements),
