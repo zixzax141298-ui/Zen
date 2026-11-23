@@ -2,7 +2,7 @@
 
 from dataclasses import dataclass
 from enum import Enum
-from itertools import islice
+from itertools import chain, islice
 import math
 
 from zen.limits import (
@@ -324,7 +324,6 @@ def _children_for_node(
                     node,
                 )
                 complete = False
-
         elif name_span is None or parameter_spans is None:
             emit(
                 "AST_FUNCTION_METADATA_MISSING",
@@ -332,7 +331,6 @@ def _children_for_node(
                 node,
             )
             complete = False
-
         else:
             metadata_valid = True
 
@@ -373,41 +371,57 @@ def _children_for_node(
                     )
                     metadata_valid = False
 
-                for index, item in enumerate(parameter_spans):
-                    if not isinstance(item, SourceSpan):
-                        emit(
-                            "AST_FUNCTION_PARAMETER_SPAN_INVALID",
-                            f"parameter_spans[{index}] must be a SourceSpan",
-                            node,
-                        )
-                        metadata_valid = False
-                        continue
+                if len(parameter_spans) > max_direct_children:
+                    emit(
+                        "AST_DIRECT_CHILD_LIMIT_EXCEEDED",
+                        "function parameter spans exceed the direct-child limit",
+                        node,
+                    )
+                    metadata_valid = False
+                else:
+                    for index, item in enumerate(parameter_spans):
+                        if not isinstance(item, SourceSpan):
+                            emit(
+                                "AST_FUNCTION_PARAMETER_SPAN_INVALID",
+                                f"parameter_spans[{index}] must be a SourceSpan",
+                                node,
+                            )
+                            metadata_valid = False
+                            continue
 
-                    try:
-                        item.__post_init__()
-                    except (TypeError, ValueError):
-                        emit(
-                            "AST_FUNCTION_PARAMETER_SPAN_INVALID",
-                            f"parameter_spans[{index}] is malformed",
-                            node,
-                        )
-                        metadata_valid = False
+                        try:
+                            item.__post_init__()
+                        except (TypeError, ValueError):
+                            emit(
+                                "AST_FUNCTION_PARAMETER_SPAN_INVALID",
+                                f"parameter_spans[{index}] is malformed",
+                                node,
+                            )
+                            metadata_valid = False
+
+            declaration_span = getattr(node, "span", None)
+
+            if not isinstance(declaration_span, SourceSpan):
+                metadata_valid = False
+            else:
+                try:
+                    declaration_span.__post_init__()
+                except (TypeError, ValueError):
+                    metadata_valid = False
 
             if metadata_valid and isinstance(body, BlockStmt):
-                ordered_spans = (
-                    name_span,
-                    *parameter_spans,
-                    body.span,
-                )
-
                 previous_end = None
 
-                for item in ordered_spans:
+                for item in chain(
+                    (name_span,),
+                    parameter_spans,
+                    (body.span,),
+                ):
                     if not isinstance(item, SourceSpan):
                         metadata_valid = False
                         break
 
-                    if not node.span.contains(item):
+                    if not declaration_span.contains(item):
                         emit(
                             "AST_FUNCTION_METADATA_OUT_OF_RANGE",
                             "function metadata and body spans must be contained in the declaration span",
