@@ -458,6 +458,71 @@ class AstValidationContractTests(unittest.TestCase):
             self.codes(validate_ast(program)),
         )
 
+    def test_function_parameter_spans_respect_direct_child_limit(self):
+        source_id = SourceIdentifier.new()
+        body = BlockStmt(
+            sp(5, 9),
+            (),
+            source_id=source_id,
+        )
+        function = FunctionDecl(
+            sp(1, 10),
+            "f",
+            ("x",),
+            body,
+            source_id=source_id,
+            name_span=sp(1, 2),
+            parameter_spans=(sp(3, 4),),
+        )
+        object.__setattr__(
+            function,
+            "parameter_spans",
+            (sp(3, 4), sp(4, 5)),
+        )
+        program = Program(
+            sp(1, 10),
+            (function,),
+            source_id=source_id,
+        )
+
+        result = validate_ast(
+            program,
+            ASTValidationLimits(max_direct_children=1),
+        )
+
+        self.assertFalse(result.complete)
+        self.assertIn(
+            "AST_DIRECT_CHILD_LIMIT_EXCEEDED",
+            self.codes(result),
+        )
+
+    def test_corrupted_function_declaration_span_does_not_crash(self):
+        source_id = SourceIdentifier.new()
+        body = BlockStmt(
+            sp(5, 9),
+            (),
+            source_id=source_id,
+        )
+        function = FunctionDecl(
+            sp(1, 10),
+            "f",
+            ("x",),
+            body,
+            source_id=source_id,
+            name_span=sp(1, 2),
+            parameter_spans=(sp(3, 4),),
+        )
+        program = Program(
+            sp(1, 10),
+            (function,),
+            source_id=source_id,
+        )
+        object.__setattr__(function, "span", object())
+
+        result = validate_ast(program)
+
+        self.assertFalse(result.complete)
+
     def test_parameter_limit_is_counted(self):
         source_id = SourceIdentifier.new()
 
