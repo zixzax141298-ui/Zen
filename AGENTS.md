@@ -105,35 +105,35 @@ Validation must not silently repair malformed canonical AST input.
 
 ## 8. Milestone Status and Active Work
 
-### ZB-07 — AST Semantic Readiness & Source Identity Contract
+### ZSS — Zen Structured Syntax
 
-**Status:** REOPENED — highest active milestone; implementation and verification in progress.
+**Status:** ACTIVE — sole active ZEN workstream; highest priority.
 
-- Historical implementation commit: `a6f3770f50dd5f7cb637cd7239220f07eecf6414`
-- Historical merged milestone base: `a62f4e904adfc9f9ae1e2d15b1d0d8e57fc5d676`
-- Reopened implementation baseline: current fetched `origin/main`, recorded in
-  `docs/engineering/ZB-07_CHANGE_PLAN.md`.
-- Current Change Plan: `docs/engineering/ZB-07_CHANGE_PLAN.md` v2.0.
-- Evidence ledger: `docs/engineering/ZB-07_EVIDENCE.md`.
+ZSS is the only active workstream. Its current scope is syntax
+architecture, specification governance, and documentation.
 
-The earlier scope-qualified closure remains historical evidence. It does not
-close the newly approved ZB-07 v2.0 requirements. The reopened work must be
-verified independently, and no new completion claim is permitted before the
-acceptance criteria have evidence.
+- ZSS-01 — Grammar Baseline & Design Foundation:
+  COMPLETED; Owner-approved baseline merged into main.
+  Preserve `docs/engineering/ZSS-01_GRAMMAR_BASELINE.md` unchanged.
+- ZSS-02 — Governance, Rule Lifecycle & Compatibility:
+  OWNER-APPROVED FINAL SPECIFICATION.
+  Documentation incorporation is authorized within the approved scope.
+  This approval does not authorize implementation or migration execution.
+- ZB-07 — AST Semantic Readiness & Source Identity Contract:
+  PAUSED by Owner direction. Preserve its implementation, Change Plan,
+  evidence ledger, baseline references, and historical records.
+- ZIIF-01 — Canonical AST Identity Fingerprint:
+  PAUSED. Preserve its existing implementation and fingerprint v1 contract.
 
-### ZIIF-01 — Canonical AST Identity Fingerprint
+Paused workstreams are not deleted, abandoned, or declared permanently
+completed. Reopening requires explicit Owner approval.
 
-**Status:** PAUSED — existing implementation and fingerprint contract must be preserved.
+ZEN remains an extensible ecosystem. ZSS must not obstruct or invalidate
+future independently governed ZEN subsystems.
 
-- Existing implementation remains in the repository.
-- Follow-on ZIIF-01 work is paused until reopened ZB-07 is complete.
-- Existing fingerprint version, output format, explicit node schemas, and
-  source-metadata exclusion from the v1 digest must remain unchanged.
-- Change Plan: `docs/engineering/ZIIF-01_CHANGE_PLAN.md`
-- Evidence ledger: `docs/engineering/ZIIF-01_EVIDENCE.md`
+Specification approval does not authorize implementation. Separate explicit
+Owner approval is required before implementation or migration execution.
 
-Do not resume follow-on work or expand the fingerprint contract while ZB-07
-has priority unless the Owner explicitly approves a separate scope change.
 ## 9. Evidence and Documentation
 
 Use these evidence labels consistently:

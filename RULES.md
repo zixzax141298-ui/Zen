@@ -136,17 +136,33 @@ Read `SECURITY.md` before security-sensitive work. Security-sensitive work inclu
 
 ## 14. Milestone Status and Active Work
 
-### ZB-07 — AST Semantic Readiness & Source Identity Contract
+### ZSS — Zen Structured Syntax
 
-**Status: REOPENED — highest active milestone; implementation and verification in progress.**
+**Status: ACTIVE — sole active ZEN workstream; highest priority.**
 
-The historical scope-qualified closure and merged implementation remain historical evidence. They do not close the newly approved reopened ZB-07 v2.0 requirements. Use `docs/engineering/ZB-07_CHANGE_PLAN.md` and `docs/engineering/ZB-07_EVIDENCE.md` as the current milestone records. Do not declare completion until the reopened acceptance criteria have evidence.
+ZSS is the only active workstream for syntax architecture, specification
+governance, and documentation.
 
-### ZIIF-01 — Canonical AST Identity Fingerprint
+- **ZSS-01:** COMPLETED — Owner-approved Grammar Baseline &
+  Design Foundation merged into main. Its approved baseline must remain
+  unchanged.
+- **ZSS-02:** OWNER-APPROVED FINAL SPECIFICATION.
+  Documentation incorporation is authorized within the approved scope.
+  Implementation and migration execution are not authorized.
+- **ZB-07:** PAUSED by Owner direction. Preserve its implementation,
+  Change Plan, evidence ledger, baseline references, and historical records.
+- **ZIIF-01:** PAUSED. Preserve existing implementation and fingerprint
+  v1 contract, including version, output format, node schemas, field order,
+  and source-metadata exclusion from the v1 digest.
 
-**Status: PAUSED — preserve existing implementation and fingerprint v1 contract.**
+Paused workstreams are not deleted, abandoned, or permanently completed.
+Reopening requires explicit Owner approval.
 
-Follow-on ZIIF-01 work remains paused until reopened ZB-07 is complete unless the Owner explicitly authorizes a separate scope change. Preserve fingerprint version, output format, explicit node schemas, field order, and the v1 exclusion of source metadata from the digest.
+ZEN remains an extensible ecosystem. ZSS must not obstruct or invalidate
+future independently governed ZEN subsystems.
+
+Specification approval does not authorize implementation. Separate explicit
+Owner approval is required before implementation or migration execution.
 
 ## 15. ZEAI Security and Authority
 
