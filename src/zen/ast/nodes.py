@@ -11,16 +11,48 @@ from .source_location import SourceLocation
 from .source_span import SourceSpan
 
 
-def _tuple_of(values, field_name: str, *, child_collection: bool = True) -> tuple:
+def _tuple_of(
+    values,
+    field_name: str,
+    *,
+    child_collection: bool = True,
+    max_items: int | None = None,
+) -> tuple:
+    """Materialize an iterable without exceeding its configured bound."""
+
     if isinstance(values, (str, bytes)):
-        raise TypeError(f"{field_name} must be a collection, not text")
+        raise TypeError(
+            f"{field_name} must be a collection, not text"
+        )
+
+    limit = (
+        MAX_DIRECT_CHILDREN
+        if child_collection
+        else max_items
+    )
+
     try:
-        result = tuple(values)
+        iterator = iter(values)
     except TypeError as exc:
-        raise TypeError(f"{field_name} must be iterable") from exc
-    if child_collection and len(result) > MAX_DIRECT_CHILDREN:
-        raise ValueError(f"{field_name} exceeds MAX_DIRECT_CHILDREN")
-    return result
+        raise TypeError(
+            f"{field_name} must be iterable"
+        ) from exc
+
+    result = []
+
+    for item in iterator:
+        if limit is not None and len(result) >= limit:
+            if child_collection:
+                raise ValueError(
+                    f"{field_name} exceeds MAX_DIRECT_CHILDREN"
+                )
+            raise ValueError(
+                f"{field_name} exceeds configured item limit"
+            )
+
+        result.append(item)
+
+    return tuple(result)
 
 
 def _validate_children(parent: "Node", children: tuple, field_name: str) -> None:
@@ -124,6 +156,7 @@ class FunctionDecl(Statement):
             self.parameters,
             "parameters",
             child_collection=False,
+            max_items=MAX_DIRECT_CHILDREN,
         )
         object.__setattr__(self, "parameters", parameters)
 
@@ -308,9 +341,12 @@ class CallExpr(Expression):
         super(CallExpr, self).__post_init__()
         if not isinstance(self.callee, Expression):
             raise TypeError("Call callee must be an Expression")
-        arguments = _tuple_of(self.arguments, "arguments", child_collection=False)
-        if len(arguments) + 1 > MAX_DIRECT_CHILDREN:
-            raise ValueError("callee/arguments exceeds MAX_DIRECT_CHILDREN")
+        arguments = _tuple_of(
+            self.arguments,
+            "arguments",
+            child_collection=False,
+            max_items=MAX_DIRECT_CHILDREN - 1,
+        )
         object.__setattr__(self, "arguments", arguments)
         if any(not isinstance(item, Expression) for item in arguments):
             raise TypeError("Call arguments must contain Expression nodes")
