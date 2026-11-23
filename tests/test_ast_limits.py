@@ -63,3 +63,23 @@ class AstLimitsTests(unittest.TestCase):
         self.assertEqual(initial.enter().depth, 1)
         self.assertEqual(initial.track_node().node_count, 1)
         self.assertEqual((initial.depth, initial.node_count), (0, 0))
+
+    def test_constructor_parser_depth_boundary_minus_one_and_exact(self):
+        for depth in (MAX_PARSER_DEPTH - 1, MAX_PARSER_DEPTH):
+            with self.subTest(depth=depth):
+                context = ParseContext(depth=depth, node_count=0)
+                self.assertEqual(context.parser_depth, depth)
+
+    def test_constructor_rejects_parser_depth_above_limit(self):
+        with self.assertRaisesRegex(ValueError, "MAX_PARSER_DEPTH"):
+            ParseContext(depth=MAX_PARSER_DEPTH + 1, node_count=0)
+
+    def test_constructor_node_count_boundary_minus_one_and_exact(self):
+        for count in (MAX_AST_NODES - 1, MAX_AST_NODES):
+            with self.subTest(node_count=count):
+                context = ParseContext(depth=0, node_count=count)
+                self.assertEqual(context.node_count, count)
+
+    def test_constructor_rejects_node_count_above_limit(self):
+        with self.assertRaisesRegex(ValueError, "MAX_AST_NODES"):
+            ParseContext(depth=0, node_count=MAX_AST_NODES + 1)
