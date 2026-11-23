@@ -138,7 +138,7 @@ active_milestone:
   name: "AST Semantic Readiness & Source Identity Contract"
   status: "REOPENED_OWNER_APPROVED_IMPLEMENTATION_AND_VERIFICATION_IN_PROGRESS"
   priority: "HIGHEST"
-  baseline_commit: "ea2c14841540ce236d9c74d45401e47abe9982f7"
+  baseline_commit: "8fa9a65efc534eb23d7fc63141100429bd169000"
   baseline_branch: "origin/main"
   change_plan: "docs/engineering/ZB-07_CHANGE_PLAN.md"
   evidence_ledger: "docs/engineering/ZB-07_EVIDENCE.md"
