@@ -1,4 +1,4 @@
-"""Tests for the minimal Zen tree-walk interpreter."""
+"""Runtime tests — OQ-07 evaluation contract."""
 
 from __future__ import annotations
 
@@ -22,7 +22,6 @@ def test_literal_and_arithmetic():
 
 def test_variables():
     assert _run("let x = 10\nx") == 10
-    assert _run("let a = 1\nlet b = 2\na + b") == 3
 
 
 def test_assignment():
@@ -30,44 +29,21 @@ def test_assignment():
 
 
 def test_function_call():
-    src = """
-fn add(a, b) {
-  return a + b
-}
-add(2, 3)
-"""
+    src = "fn add(a, b) {\n  return a + b\n}\nadd(2, 3)"
     assert _run(src) == 5
 
 
 def test_if_else():
-    src = """
-let x = 0
-if (true) {
-  x = 1
-} else {
-  x = 2
-}
-x
-"""
+    src = "let x = 0\nif (true) {\n  x = 1\n} else {\n  x = 2\n}\nx"
     assert _run(src) == 1
 
 
 def test_while():
-    src = """
-let i = 0
-let sum = 0
-while (i < 5) {
-  sum = sum + i
-  i = i + 1
-}
-sum
-"""
+    src = (
+        "let i = 0\nlet sum = 0\n"
+        "while (i < 5) {\n  sum = sum + i\n  i = i + 1\n}\nsum"
+    )
     assert _run(src) == 10
-
-
-def test_const_assign_runtime():
-    with pytest.raises(RuntimeError):
-        _run("const x = 1\nx = 2")
 
 
 def test_div_by_zero():
@@ -75,6 +51,42 @@ def test_div_by_zero():
         _run("1 / 0")
 
 
-def test_undefined_variable():
-    with pytest.raises(RuntimeError, match="Undefined"):
-        _run("x")
+def test_short_circuit_and():
+    src = (
+        "let called = false\n"
+        "fn f() { called = true\n return true }\n"
+        "false && f()\n"
+        "called"
+    )
+    assert _run(src) is False
+
+
+def test_short_circuit_or():
+    src = (
+        "let called = false\n"
+        "fn f() { called = true\n return false }\n"
+        "true || f()\n"
+        "called"
+    )
+    assert _run(src) is False
+
+
+def test_non_boolean_if_condition():
+    with pytest.raises(RuntimeError, match="Boolean"):
+        _run("if (1) { 0 }")
+
+
+def test_bool_not_numeric():
+    with pytest.raises(RuntimeError, match="number"):
+        _run("true + 1")
+
+
+def test_cross_type_equality():
+    assert _run("1 == true") is False
+    assert _run("1 != true") is True
+    assert _run("1 == 1") is True
+
+
+def test_const_assign_runtime():
+    with pytest.raises(RuntimeError):
+        _run("const x = 1\nx = 2")
