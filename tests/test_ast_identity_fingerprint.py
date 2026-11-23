@@ -3,7 +3,9 @@ import unittest
 
 from zen.ast import (
     ASTFingerprintError,
+    BlockStmt,
     ExpressionStmt,
+    FunctionDecl,
     LiteralExpr,
     Program,
     SourceIdentifier,
@@ -199,6 +201,47 @@ class ASTIdentityFingerprintTests(unittest.TestCase):
             re.compile(r"^zen-ast-sha256-v1:[0-9a-f]{64}$"),
         )
 
+
+
+    def test_function_source_metadata_is_excluded_from_v1_fingerprint(self):
+        source_id = SourceIdentifier("function-metadata-fingerprint")
+        declaration_span = SourceSpan(1, 1, 1, 20)
+        body_span = SourceSpan(1, 10, 1, 15)
+
+        def make_function(name_span, parameter_span):
+            body = BlockStmt(
+                body_span,
+                (),
+                source_id=source_id,
+            )
+            function = FunctionDecl(
+                declaration_span,
+                "f",
+                ("x",),
+                body,
+                source_id=source_id,
+                name_span=name_span,
+                parameter_spans=(parameter_span,),
+            )
+            return Program(
+                declaration_span,
+                (function,),
+                source_id=source_id,
+            )
+
+        first = make_function(
+            SourceSpan(1, 1, 1, 2),
+            SourceSpan(1, 3, 1, 4),
+        )
+        second = make_function(
+            SourceSpan(1, 2, 1, 3),
+            SourceSpan(1, 5, 1, 6),
+        )
+
+        self.assertEqual(
+            fingerprint_ast(first),
+            fingerprint_ast(second),
+        )
 
 if __name__ == "__main__":
     unittest.main()
