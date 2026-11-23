@@ -1,8 +1,4 @@
-"""Tree-walk interpreter for Zen v0.1 (minimal defined subset).
-
-Only evaluation behavior that is sufficiently constrained is implemented.
-Open questions (especially OQ-07) are not silently resolved.
-"""
+"""Tree-walk interpreter for Zen v0.1 — OQ-07 evaluation contract."""
 
 from __future__ import annotations
 
@@ -30,10 +26,17 @@ from zen.ast.nodes import (
 )
 
 
-class RuntimeError(Exception):
+class ZenRuntimeError(Exception):
+    """Language-level runtime error (not a raw Python exception leak)."""
+
     def __init__(self, message: str, line: int | None = None) -> None:
         self.line = line
-        super().__init__(message if line is None else f"{message} (line {line})")
+        super().__init__(
+            message if line is None else f"{message} (line {line})"
+        )
+
+
+RuntimeError = ZenRuntimeError
 
 
 class ReturnSignal(Exception):
@@ -57,11 +60,11 @@ class Environment:
         while env is not None:
             if name in env.values:
                 if name in env.constants:
-                    raise RuntimeError(f"Cannot assign to constant '{name}'")
+                    raise ZenRuntimeError(f"Cannot assign to constant '{name}'")
                 env.values[name] = value
                 return
             env = env.parent
-        raise RuntimeError(f"Undefined variable '{name}'")
+        raise ZenRuntimeError(f"Undefined variable '{name}'")
 
     def get(self, name: str) -> Any:
         env: Environment | None = self
@@ -69,7 +72,7 @@ class Environment:
             if name in env.values:
                 return env.values[name]
             env = env.parent
-        raise RuntimeError(f"Undefined variable '{name}'")
+        raise ZenRuntimeError(f"Undefined variable '{name}'")
 
 
 @dataclass
@@ -79,6 +82,14 @@ class ZenFunction:
 
     def arity(self) -> int:
         return len(self.declaration.parameters)
+
+
+def _is_number(value: Any) -> bool:
+    return type(value) in (int, float)
+
+
+def _is_bool(value: Any) -> bool:
+    return type(value) is bool
 
 
 class Interpreter:
@@ -109,14 +120,29 @@ class Interpreter:
             return self._execute_block(stmt, Environment(parent=self.env))
         if isinstance(stmt, IfStmt):
             cond = self._evaluate(stmt.condition)
-            if self._is_truthy(cond):
+            if not _is_bool(cond):
+                line = stmt.condition.span.start_line if stmt.condition.span else None
+                raise ZenRuntimeError("if condition must be a Boolean", line)
+            if cond is True:
                 return self._execute(stmt.then_branch)
             if stmt.else_branch is not None:
                 return self._execute(stmt.else_branch)
             return None
         if isinstance(stmt, WhileStmt):
             result = None
-            while self._is_truthy(self._evaluate(stmt.condition)):
+            while True:
+                cond = self._evaluate(stmt.condition)
+                if not _is_bool(cond):
+                    line = (
+                        stmt.condition.span.start_line
+                        if stmt.condition.span
+                        else None
+                    )
+                    raise ZenRuntimeError(
+                        "while condition must be a Boolean", line
+                    )
+                if cond is not True:
+                    break
                 result = self._execute(stmt.body)
             return result
         if isinstance(stmt, ReturnStmt):
@@ -152,39 +178,85 @@ class Interpreter:
         if isinstance(expr, UnaryExpr):
             operand = self._evaluate(expr.operand)
             if expr.operator == "!":
-                return not self._is_truthy(operand)
+                if not _is_bool(operand):
+                    raise ZenRuntimeError(
+                        "Operand of '!' must be a Boolean",
+                        expr.span.start_line if expr.span else None,
+                    )
+                return not operand
             if expr.operator == "-":
-                self._check_number(operand, expr)
+                if not _is_number(operand):
+                    raise ZenRuntimeError(
+                        "Operand of unary '-' must be a number",
+                        expr.span.start_line if expr.span else None,
+                    )
                 return -operand
-            raise RuntimeError(f"Unknown unary operator '{expr.operator}'")
+            raise ZenRuntimeError(f"Unknown unary operator '{expr.operator}'")
         if isinstance(expr, BinaryExpr):
+            op = expr.operator
+            if op == "&&":
+                left = self._evaluate(expr.left)
+                if not _is_bool(left):
+                    raise ZenRuntimeError(
+                        "Operands of '&&' must be Boolean",
+                        expr.span.start_line if expr.span else None,
+                    )
+                if left is False:
+                    return False
+                right = self._evaluate(expr.right)
+                if not _is_bool(right):
+                    raise ZenRuntimeError(
+                        "Operands of '&&' must be Boolean",
+                        expr.span.start_line if expr.span else None,
+                    )
+                return right
+            if op == "||":
+                left = self._evaluate(expr.left)
+                if not _is_bool(left):
+                    raise ZenRuntimeError(
+                        "Operands of '||' must be Boolean",
+                        expr.span.start_line if expr.span else None,
+                    )
+                if left is True:
+                    return True
+                right = self._evaluate(expr.right)
+                if not _is_bool(right):
+                    raise ZenRuntimeError(
+                        "Operands of '||' must be Boolean",
+                        expr.span.start_line if expr.span else None,
+                    )
+                return right
             left = self._evaluate(expr.left)
             right = self._evaluate(expr.right)
-            op = expr.operator
             if op == "+":
-                if isinstance(left, (int, float)) and isinstance(right, (int, float)):
+                if _is_number(left) and _is_number(right):
                     return left + right
-                if isinstance(left, str) and isinstance(right, str):
+                if type(left) is str and type(right) is str:
                     return left + right
-                raise RuntimeError("Operands of '+' must be two numbers or two strings")
+                raise ZenRuntimeError(
+                    "Operands of '+' must be two numbers or two strings"
+                )
             if op in ("-", "*", "/", "%"):
-                self._check_number(left, expr)
-                self._check_number(right, expr)
+                if not _is_number(left) or not _is_number(right):
+                    raise ZenRuntimeError(
+                        f"Operands of '{op}' must be numbers"
+                    )
                 if op == "-":
                     return left - right
                 if op == "*":
                     return left * right
                 if op == "/":
                     if right == 0:
-                        raise RuntimeError("Division by zero")
+                        raise ZenRuntimeError("Division by zero")
                     return left / right
-                if op == "%":
-                    if right == 0:
-                        raise RuntimeError("Modulo by zero")
-                    return left % right
+                if right == 0:
+                    raise ZenRuntimeError("Modulo by zero")
+                return left % right
             if op in ("<", "<=", ">", ">="):
-                self._check_number(left, expr)
-                self._check_number(right, expr)
+                if not _is_number(left) or not _is_number(right):
+                    raise ZenRuntimeError(
+                        f"Operands of '{op}' must be numbers"
+                    )
                 if op == "<":
                     return left < right
                 if op == "<=":
@@ -193,25 +265,27 @@ class Interpreter:
                     return left > right
                 return left >= right
             if op == "==":
+                if type(left) is not type(right):
+                    return False
                 return left == right
             if op == "!=":
+                if type(left) is not type(right):
+                    return True
                 return left != right
-            if op == "&&":
-                return self._is_truthy(left) and self._is_truthy(right)
-            if op == "||":
-                return self._is_truthy(left) or self._is_truthy(right)
-            raise RuntimeError(f"Unknown binary operator '{op}'")
+            raise ZenRuntimeError(f"Unknown binary operator '{op}'")
         if isinstance(expr, CallExpr):
             callee = self._evaluate(expr.callee)
             args = [self._evaluate(a) for a in expr.arguments]
             if not isinstance(callee, ZenFunction):
-                raise RuntimeError("Can only call functions")
+                raise ZenRuntimeError("Can only call functions")
             if len(args) != callee.arity():
-                raise RuntimeError(
+                raise ZenRuntimeError(
                     f"Expected {callee.arity()} arguments but got {len(args)}"
                 )
             return self._call(callee, args)
-        raise RuntimeError(f"Unsupported expression type: {type(expr).__name__}")
+        raise ZenRuntimeError(
+            f"Unsupported expression type: {type(expr).__name__}"
+        )
 
     def _call(self, fn: ZenFunction, args: list[Any]) -> Any:
         env = Environment(parent=fn.closure)
@@ -222,16 +296,6 @@ class Interpreter:
         except ReturnSignal as ret:
             return ret.value
         return None
-
-    def _is_truthy(self, value: Any) -> bool:
-        if value is None or value is False:
-            return False
-        return True
-
-    def _check_number(self, value: Any, expr: Expression) -> None:
-        if not isinstance(value, (int, float)) or isinstance(value, bool):
-            line = expr.span.start_line if expr.span else None
-            raise RuntimeError("Operand must be a number", line)
 
 
 def interpret(program: Program) -> Any:
