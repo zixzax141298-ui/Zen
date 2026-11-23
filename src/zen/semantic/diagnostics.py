@@ -1,4 +1,4 @@
-"""Semantic diagnostics and errors."""
+"""Semantic diagnostics and structured error catalog (OQ-09)."""
 
 from __future__ import annotations
 
@@ -16,12 +16,25 @@ class SemanticSeverity(Enum):
     WARNING = "warning"
 
 
+# Stable diagnostic codes (OQ-09)
+ZSS_S001_UNDEFINED = "ZSS-S001"
+ZSS_S002_DUPLICATE = "ZSS-S002"
+ZSS_S003_UNINITIALIZED = "ZSS-S003"
+ZSS_S004_CONST_ASSIGN = "ZSS-S004"
+ZSS_S005_NOT_CALLABLE = "ZSS-S005"
+ZSS_S006_ARITY = "ZSS-S006"
+ZSS_S007_DUP_PARAM = "ZSS-S007"
+ZSS_S008_RETURN_OUTSIDE = "ZSS-S008"
+
+
 @dataclass(frozen=True, slots=True)
 class SemanticDiagnostic:
     code: str
     message: str
     severity: SemanticSeverity = SemanticSeverity.ERROR
     span: SourceSpan | None = None
+    symbol: str | None = None
+    related_span: SourceSpan | None = None
     source_id: SourceIdentifier | None = field(default=None, kw_only=True)
 
     def as_diagnostic(self) -> Diagnostic:
@@ -45,11 +58,7 @@ class SemanticDiagnostic:
 
 @dataclass(frozen=True, slots=True)
 class SemanticError(Exception):
-    """Raised when semantic analysis fails closed on the first error.
-
-    Matches the project strict-error policy: first semantic error stops
-    the current program analysis.
-    """
+    """Raised when semantic analysis fails closed on hard errors."""
 
     message: str
     diagnostic: SemanticDiagnostic
