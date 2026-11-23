@@ -22,13 +22,15 @@ authorize commit, push, merge, release, deployment, or unrelated work.
 Repository: zixzax141298-ui/Zen
 
 Current implementation branch:
-`feature/zb07-function-fingerprint-regression`
+`feature/zb07-parser-context-bounds`
 
 Owner-reported local HEAD:
-`f657a1fc1bb2bb1d260820da3eae0acf14878f43`
+`75c9dbde65e5ab7508e111f2ff87b30e93a70c7d`
 
 Owner-reported fetched `origin/main`:
-`f657a1fc1bb2bb1d260820da3eae0acf14878f43`
+`75c9dbde65e5ab7508e111f2ff87b30e93a70c7d`
+
+The previous active baseline (`f657a1fc1bb2bb1d260820da3eae0acf14878f43`) is superseded for this implementation and retained as historical evidence.
 
 Observed working-tree state at branch creation:
 clean; no tracked modifications and no untracked files.

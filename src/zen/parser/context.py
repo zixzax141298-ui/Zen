@@ -42,6 +42,16 @@ class ParseContext:
                 "node_count must be a non-negative integer"
             )
 
+        if self.depth > MAX_PARSER_DEPTH:
+            raise ValueError(
+                "parser depth exceeds MAX_PARSER_DEPTH"
+            )
+
+        if self.node_count > MAX_AST_NODES:
+            raise ValueError(
+                "node_count exceeds MAX_AST_NODES"
+            )
+
         if (
             self.source_id is not None
             and not isinstance(self.source_id, SourceIdentifier)
