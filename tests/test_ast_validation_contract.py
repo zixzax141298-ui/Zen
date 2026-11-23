@@ -823,5 +823,73 @@ class AstValidationContractTests(unittest.TestCase):
             self.codes(above),
         )
 
+    def test_parameter_limit_aggregates_across_functions(self):
+        source_id = SourceIdentifier.new()
+
+        first_body = BlockStmt(
+            sp(6, 9),
+            (),
+            source_id=source_id,
+        )
+        first_function = FunctionDecl(
+            sp(1, 10),
+            "first",
+            ("x",),
+            first_body,
+            source_id=source_id,
+            name_span=sp(1, 2),
+            parameter_spans=(sp(3, 4),),
+        )
+
+        second_body = BlockStmt(
+            sp(16, 19),
+            (),
+            source_id=source_id,
+        )
+        second_function = FunctionDecl(
+            sp(11, 20),
+            "second",
+            ("y",),
+            second_body,
+            source_id=source_id,
+            name_span=sp(11, 12),
+            parameter_spans=(sp(13, 14),),
+        )
+
+        program = Program(
+            sp(1, 20),
+            (first_function, second_function),
+            source_id=source_id,
+        )
+
+        below = validate_ast(
+            program,
+            ASTValidationLimits(max_parameters=1),
+        )
+        exact = validate_ast(
+            program,
+            ASTValidationLimits(max_parameters=2),
+        )
+        above = validate_ast(
+            program,
+            ASTValidationLimits(max_parameters=3),
+        )
+
+        self.assertFalse(below.is_valid)
+        self.assertFalse(below.complete)
+        self.assertEqual(below.parameter_count, 2)
+        self.assertIn(
+            "AST_PARAMETER_LIMIT_EXCEEDED",
+            self.codes(below),
+        )
+
+        self.assertTrue(exact.is_valid)
+        self.assertTrue(exact.complete)
+        self.assertEqual(exact.parameter_count, 2)
+
+        self.assertTrue(above.is_valid)
+        self.assertTrue(above.complete)
+        self.assertEqual(above.parameter_count, 2)
+
 if __name__ == "__main__":
     unittest.main()
