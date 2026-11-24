@@ -169,7 +169,7 @@ governance_alignment:
     - "AGENTS.md Section 8"
     - "AI_RULES.yaml active milestone block"
     - "RULES.md Section 14"
-  implementation_authorized: true
+  governance_document_changes_authorized: true
   merge_authorized: false
 
 preserved_workstreams:
