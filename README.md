@@ -12,27 +12,32 @@ dan interpreted yang dirancang agar mudah dipelajari dan dikembangkan.
 
 | Component | Status |
 |---|---|
-| Language specification | Formal v0.1 grammar specified |
+| Language specification | Formal v0.1 grammar specified (Owner-approved) |
 | Lexer | Implemented |
-
 | AST node model | Implemented |
-
-
-
+| Parser | Implemented (recursive-descent, resource limits) |
+| Semantic analysis | Implemented (OQ-01..OQ-09) |
+| Interpreter / runtime | Implemented (tree-walk, OQ-07) |
+| Public API | `parse`, `analyze`, `interpret`, `execute` |
 | Package configuration | Implemented |
-| Public API | Lexer exports only |
-| Parser | Not implemented |
-| Semantic analysis | Planned |
-| Interpreter | Planned |
-| Runtime | Planned |
 
-The formal grammar defines the intended v0.1 syntax. It does not mean
-that Zen source programs can already be parsed or executed.
+**Maturity:** v0.1 engineering prototype. Tested via pytest (Python 3.10–3.14).
+Not production-ready.
+
+Safe high-level entry point:
+
+```python
+from zen import execute
+result = execute("fn f(x) { return x + 1 }\\nf(41)")  # -> 42
+```
+
+- `execute(source)` — Parse → AST validate → Semantic (strict) → Runtime (fail-closed).
+- `interpret(program)` — low-level; caller must ensure semantic validity.
 
 ## Requirements
 
 - Python 3.10+
-- No third-party runtime dependencies for the current lexer milestone.
+- No third-party runtime dependencies for the current milestone.
 - Setuptools is used as a build-time packaging dependency.
 
 ## Installation
@@ -47,30 +52,28 @@ See [Installation Guide](docs/02-installation.md).
 
 ## Public API
 
-The initial public API exports:
+Top-level exports include lexer, parser, semantic analysis, and runtime:
 
-- `Lexer`
-- `LexerError`
-- `Token`
-- `TokenType`
-
-The AST node model is currently available from `zen.ast`; it is not yet
-part of the top-level `zen` public API.
+- `Lexer`, `LexerError`, `Token`, `TokenType`
+- `parse`, `ParseError`
+- `analyze`, `SemanticAnalyzer`, `SemanticError`
+- `interpret`, `Interpreter`, `RuntimeError` / `ZenRuntimeError`
+- `execute` — recommended high-level pipeline
 
 Example:
 
 ```python
-from zen import Lexer
+from zen import execute, Lexer
+
+print(execute("1 + 2 * 3"))  # 7
 
 tokens = Lexer("let answer = 42").tokenize()
-for token in tokens:
-    print(token)
 ```
 
 ## Run tests
 
 ```bash
-python -m unittest discover -s tests -v
+python -m pytest -q
 ```
 
 ## Documentation
