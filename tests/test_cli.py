@@ -88,7 +88,23 @@ def test_repl_recovers_after_invalid_submission():
     assert "zen:" in rendered
     assert "42" in rendered
 
-def test_repl_does_not_reexecute_previous_statements():
+def test_repl_does_not_reexecute_previous_statements(monkeypatch):
+    from zen.runtime.interpreter import Interpreter as RealInterpreter
+
+    instances = []
+    interpreted_statement_counts = []
+
+    class RecordingInterpreter(RealInterpreter):
+        def __init__(self):
+            super().__init__()
+            instances.append(self)
+
+        def interpret(self, program):
+            interpreted_statement_counts.append(len(program.statements))
+            return super().interpret(program)
+
+    monkeypatch.setattr("zen.cli.Interpreter", RecordingInterpreter)
+
     commands = iter(
         [
             "let counter = 0",
@@ -105,7 +121,9 @@ def test_repl_does_not_reexecute_previous_statements():
         output=output,
     ) == 0
 
-    assert "2" in output.getvalue()
+    assert len(instances) == 1
+    assert interpreted_statement_counts == [1, 1, 1, 1]
+    assert output.getvalue().splitlines().count("2") == 2
 
 
 def test_repl_rolls_back_global_state_after_runtime_error():
