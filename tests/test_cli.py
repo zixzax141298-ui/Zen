@@ -87,3 +87,65 @@ def test_repl_recovers_after_invalid_submission():
     rendered = output.getvalue()
     assert "zen:" in rendered
     assert "42" in rendered
+
+def test_repl_does_not_reexecute_previous_statements():
+    commands = iter(
+        [
+            "let counter = 0",
+            "counter = counter + 1",
+            "counter = counter + 1",
+            "counter",
+            ":quit",
+        ]
+    )
+    output = StringIO()
+
+    assert run_repl(
+        input_fn=lambda _prompt: next(commands),
+        output=output,
+    ) == 0
+
+    assert "2" in output.getvalue()
+
+
+def test_repl_rolls_back_global_state_after_runtime_error():
+    commands = iter(
+        [
+            "let counter = 1",
+            "counter = 2",
+            "1 / 0",
+            "counter",
+            ":quit",
+        ]
+    )
+    output = StringIO()
+
+    assert run_repl(
+        input_fn=lambda _prompt: next(commands),
+        output=output,
+    ) == 0
+
+    rendered = output.getvalue()
+    assert "Division by zero" in rendered
+    assert rendered.splitlines().count("2") == 2
+
+
+def test_repl_reset_clears_previous_variables():
+    commands = iter(
+        [
+            "let counter = 10",
+            ":reset",
+            "counter",
+            ":quit",
+        ]
+    )
+    output = StringIO()
+
+    assert run_repl(
+        input_fn=lambda _prompt: next(commands),
+        output=output,
+    ) == 0
+
+    rendered = output.getvalue()
+    assert "Session reset." in rendered
+    assert "Undefined identifier 'counter'" in rendered
