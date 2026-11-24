@@ -4,28 +4,26 @@ All notable project changes are recorded here.
 This file distinguishes implemented functionality from specified syntax
 and planned work.
 
-## 0.1.0 — Current project baseline
+## [Unreleased] — post-PR #39 residuals
 
-### Implemented
+### Fixed
+- Semantic diagnostics now propagate `source_id` from the `Program` AST.
+- Stronger diagnostic field assertions (related_span, source_id).
+- Runtime function equality rejected under OQ-07 primitive-only equality (regression tests).
 
-- Initial Zen project structure and Python package configuration.
-- Public API exports `Lexer`, `LexerError`, `Token`, and `TokenType`.
-- Lexer support for keywords, identifiers, integer and decimal literals,
-  strings, operators, punctuation, and comments.
-- Newline tokens are preserved for parser use.
-- Lexical errors report source line and column.
-- Immutable AST node model and source-span representation.
-- Editable installation using `python -m pip install -e .`.
-- Automated lexer, AST, and public API tests.
+### Documentation
+- ZSS-03 / ZSS-04 / ZSS-05 status headers reconciled: document approval vs implementation vs verification.
+- Added `docs/engineering/ZSS_PUBLIC_API_CONTRACT.md` (`execute` vs low-level APIs).
 
-### Specified, not yet implemented
+## [0.1.0] — ZSS pipeline (through PR #39)
 
-- Formal v0.1 grammar, statement boundaries, and expression precedence.
-- Parser-facing syntax rules and intended grammar-to-AST correspondence (design only).
+### Added
+- Recursive-descent parser with resource limits and depth protection.
+- Semantic analyzer (OQ-01..OQ-09) with symbol-identity definite assignment.
+- Tree-walk interpreter (OQ-07: short-circuit, strict Boolean, no string+, primitive equality).
+- Public `execute()` fail-closed pipeline.
+- Grammar/semantic/runtime regression suite (pytest, Python 3.10–3.14).
 
-### Planned, not yet implemented
-
-- Parser implementation.
-- Semantic analysis.
-- Interpreter and runtime.
-- Execution of `.zen` programs.
+### Changed
+- CI runs compileall + pytest only (Ruff/Bandit removed per Owner directive).
+- README reflects implemented components (not “parser planned”).
