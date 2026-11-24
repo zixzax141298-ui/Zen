@@ -20,6 +20,7 @@ from zen import (
     parse,
     validate_ast,
 )
+from zen.lexer import MAX_SOURCE_CHARS
 
 
 def _version_string() -> str:
@@ -64,7 +65,8 @@ def run_file(
         return 2
 
     try:
-        source = path.read_text(encoding="utf-8")
+        with path.open(encoding="utf-8") as source_file:
+            source = source_file.read(MAX_SOURCE_CHARS + 1)
     except (OSError, UnicodeError) as exc:
         _write_error(f"cannot read {path}: {exc}", sys.stderr)
         return 1

@@ -46,6 +46,89 @@ def test_run_file_reports_missing_file(tmp_path: Path, capsys):
     assert "cannot read" in capsys.readouterr().err
 
 
+def test_run_file_accepts_source_at_character_limit(
+    tmp_path: Path,
+    monkeypatch,
+    capsys,
+):
+    monkeypatch.setattr("zen.cli.MAX_SOURCE_CHARS", 8)
+    monkeypatch.setattr("zen.lexer.MAX_SOURCE_CHARS", 8)
+
+    source = tmp_path / "boundary.zen"
+    source.write_text("42      ", encoding="utf-8")
+
+    assert run_file(source) == 0
+    captured = capsys.readouterr()
+    assert captured.out == "42\n"
+    assert captured.err == ""
+
+
+def test_run_file_counts_unicode_source_by_characters(
+    tmp_path: Path,
+    monkeypatch,
+    capsys,
+):
+    monkeypatch.setattr("zen.cli.MAX_SOURCE_CHARS", 8)
+    monkeypatch.setattr("zen.lexer.MAX_SOURCE_CHARS", 8)
+
+    source = tmp_path / "unicode.zen"
+    source.write_text("//ééé\n42", encoding="utf-8")
+
+    assert len(source.read_text(encoding="utf-8")) == 8
+    assert run_file(source) == 0
+    assert capsys.readouterr().out == "42\n"
+
+
+def test_run_file_reads_at_most_limit_plus_one_characters(
+    tmp_path: Path,
+    monkeypatch,
+    capsys,
+):
+    monkeypatch.setattr("zen.cli.MAX_SOURCE_CHARS", 8)
+    monkeypatch.setattr("zen.lexer.MAX_SOURCE_CHARS", 8)
+
+    source = tmp_path / "oversized.zen"
+    source.write_text("42" + (" " * 100), encoding="utf-8")
+
+    real_open = Path.open
+    requested_sizes = []
+
+    class ReadTracker:
+        def __init__(self, stream):
+            self.stream = stream
+
+        def __enter__(self):
+            self.stream.__enter__()
+            return self
+
+        def __exit__(self, exc_type, exc_value, traceback):
+            return self.stream.__exit__(exc_type, exc_value, traceback)
+
+        def read(self, size=-1):
+            requested_sizes.append(size)
+            return self.stream.read(size)
+
+    def tracked_open(path, *args, **kwargs):
+        stream = real_open(path, *args, **kwargs)
+        if path == source:
+            return ReadTracker(stream)
+        return stream
+
+    monkeypatch.setattr(Path, "open", tracked_open)
+
+    assert run_file(source) == 1
+    assert requested_sizes == [9]
+    assert "Source exceeds 8 characters" in capsys.readouterr().err
+
+
+def test_run_file_reports_invalid_utf8(tmp_path: Path, capsys):
+    source = tmp_path / "invalid-utf8.zen"
+    source.write_bytes(b"\xff")
+
+    assert run_file(source) == 1
+    assert "cannot read" in capsys.readouterr().err
+
+
 def test_cli_version(capsys):
     with pytest.raises(SystemExit) as exc:
         main(["--version"])
