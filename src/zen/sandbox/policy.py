@@ -12,6 +12,13 @@ class SandboxPolicy:
     max_memory_bytes: int = 256 * 1024 * 1024
     max_cpu_seconds: int = 10
     max_output_bytes: int = 1024 * 1024
+    max_stdin_bytes: int = 1024 * 1024
+    max_argv_count: int = 128
+    max_argv_item_bytes: int = 32 * 1024
+    max_argv_total_bytes: int = 128 * 1024
+    max_environment_count: int = 32
+    max_environment_value_bytes: int = 8 * 1024
+    max_environment_total_bytes: int = 32 * 1024
     allowed_environment: frozenset[str] = field(default_factory=frozenset)
     network_enabled: bool = False
 
@@ -23,8 +30,19 @@ class SandboxPolicy:
             raise ValueError("timeout_seconds must be greater than zero")
         if self.max_memory_bytes <= 0 or self.max_cpu_seconds <= 0:
             raise ValueError("resource limits must be greater than zero")
-        if self.max_output_bytes <= 0:
-            raise ValueError("max_output_bytes must be greater than zero")
+        positive_limits = {
+            "max_output_bytes": self.max_output_bytes,
+            "max_stdin_bytes": self.max_stdin_bytes,
+            "max_argv_count": self.max_argv_count,
+            "max_argv_item_bytes": self.max_argv_item_bytes,
+            "max_argv_total_bytes": self.max_argv_total_bytes,
+            "max_environment_count": self.max_environment_count,
+            "max_environment_value_bytes": self.max_environment_value_bytes,
+            "max_environment_total_bytes": self.max_environment_total_bytes,
+        }
+        for name, value in positive_limits.items():
+            if isinstance(value, bool) or not isinstance(value, int) or value <= 0:
+                raise ValueError(f"{name} must be a positive integer")
         if self.network_enabled:
             raise ValueError(
                 "network access is prohibited by the current sandbox contract"
