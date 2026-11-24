@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import argparse
 import json
-import os
 import platform
 import signal
 import sys
@@ -28,6 +27,7 @@ from zen import (
     validate_ast,
 )
 from zen.lexer import MAX_SOURCE_CHARS
+from zen.ziif import generate_fingerprint  # <-- TAMBAHAN BARU
 
 # ---------------------------------------------------------------------------
 # Terminal Colors (ANSI)
@@ -46,7 +46,7 @@ class Color:
         cls.RED = cls.GREEN = cls.YELLOW = cls.BLUE = cls.CYAN = cls.RESET = cls.BOLD = ""
 
 # ---------------------------------------------------------------------------
-# Exit Codes (Sesuai dengan Test CI Lama)
+# Exit Codes
 # ---------------------------------------------------------------------------
 class ExitCode(IntEnum):
     OK = 0
@@ -89,7 +89,6 @@ def _read_source(path: Path, error: TextIO) -> str:
         raise _CliError(f"cannot read {path}: {exc}", ExitCode.IO_ERROR) from exc
         
     if len(source) > MAX_SOURCE_CHARS:
-        # HURUF BESAR 'S' disesuaikan dengan test
         raise _CliError(
             f"Source exceeds {MAX_SOURCE_CHARS} characters",
             ExitCode.SOURCE_ERROR,
@@ -116,7 +115,6 @@ def _timeout(seconds: float | None):
         return
 
     def _handler(signum, frame):
-        # HURUF BESAR 'E' disesuaikan dengan test
         raise _ExecutionTimeout(f"Execution exceeded {seconds}s")
 
     previous = signal.signal(signal.SIGALRM, _handler)
@@ -271,6 +269,25 @@ def dump_tokens(path: Path, *, output: TextIO | None = None, error: TextIO | Non
                     extra = f"  {val!r}"
                     break
         print(f"[{index:04d}] {Color.CYAN}{name:<20}{Color.RESET}{extra}", file=output)
+    return int(ExitCode.OK)
+
+def fingerprint_file(path: Path, *, output: TextIO | None = None, error: TextIO | None = None) -> int:
+    output = output or sys.stdout
+    error = error or sys.stderr
+    try:
+        source = _read_source(path, error)
+    except _CliError as exc:
+        _write_error(str(exc), error)
+        return int(exc.code)
+
+    try:
+        program = _validate_program(source)
+    except (LexerError, ParseError, SemanticError, ValueError) as exc:
+        _write_error(str(exc), error)
+        return int(ExitCode.SOURCE_ERROR)
+
+    fp = generate_fingerprint(program)
+    print(f"{Color.CYAN}{fp}{Color.RESET}", file=output)
     return int(ExitCode.OK)
 
 def format_source(path: Path, *, output: TextIO | None = None, error: TextIO | None = None) -> int:
@@ -497,7 +514,7 @@ def run_repl(*, input_fn: Callable[[str], str] | None = None, output: TextIO | N
             print(_format_result(result), file=output)
 
 # ---------------------------------------------------------------------------
-# Argparse Setup (LENGKAP)
+# Argparse Setup
 # ---------------------------------------------------------------------------
 def _argument_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
@@ -531,6 +548,9 @@ def _argument_parser() -> argparse.ArgumentParser:
     ast_p = commands.add_parser("ast", help="dump the AST as JSON")
     ast_p.add_argument("file", type=Path, help="path to a .zen source file")
 
+    fp_p = commands.add_parser("fp", help="print the ZIIF fingerprint of a .zen file")
+    fp_p.add_argument("file", type=Path, help="path to a .zen source file")
+
     tokens_p = commands.add_parser("tokens", help="dump the token stream")
     tokens_p.add_argument("file", type=Path, help="path to a .zen source file")
 
@@ -549,6 +569,8 @@ def _argument_parser() -> argparse.ArgumentParser:
 # ---------------------------------------------------------------------------
 def main(argv: Sequence[str] | None = None) -> int:
     parser = _argument_parser()
+    
+    # Biarkan SystemExit dari argparse berjalan natural
     args = parser.parse_args(argv)
 
     if getattr(args, "no_color", False):
@@ -564,6 +586,8 @@ def main(argv: Sequence[str] | None = None) -> int:
             return run_file(args.file, check_only=True, json_output=args.json)
         elif args.command == "ast":
             return dump_ast(args.file)
+        elif args.command == "fp":
+            return fingerprint_file(args.file)
         elif args.command == "tokens":
             return dump_tokens(args.file)
         elif args.command in ("format", "fmt"):

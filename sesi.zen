@@ -1,0 +1,3 @@
+let skor = 100
+let bonus = 50
+skor + bonus

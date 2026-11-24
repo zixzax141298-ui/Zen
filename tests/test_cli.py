@@ -277,3 +277,50 @@ def test_repl_save_and_load(tmp_path: Path):
     rendered = output_load.getvalue()
     assert "Loaded" in rendered
     assert "99" in rendered
+# ===========================================================================
+# BAGIAN 4: TEST FITUR ZIIF (FINGERPRINT)
+# ===========================================================================
+
+def test_cli_fp_command(tmp_path: Path, capsys):
+    """Test `zen fp` menghasilkan fingerprint yang konsisten."""
+    source = tmp_path / "test.zen"
+    source.write_text("let x = 40 + 2\n", encoding="utf-8")
+    
+    assert main(["fp", str(source)]) == 0
+    captured = capsys.readouterr()
+    fp1 = captured.out.strip()
+    
+    assert fp1.startswith("z1-")
+    assert len(fp1) == 35  # z1- (3) + 32 karakter hash = 35
+
+def test_cli_fp_ignores_whitespace(tmp_path: Path, capsys):
+    """Test ZIIF mengabaikan perubahan spasi/enter (karena maknanya sama)."""
+    source1 = tmp_path / "a.zen"
+    source1.write_text("let x = 40 + 2", encoding="utf-8")
+    
+    source2 = tmp_path / "b.zen"
+    source2.write_text("   let x = 40 + 2   \n\n", encoding="utf-8")
+    
+    main(["fp", str(source1)])
+    fp1 = capsys.readouterr().out.strip()
+    
+    main(["fp", str(source2)])
+    fp2 = capsys.readouterr().out.strip()
+    
+    assert fp1 == fp2
+
+def test_cli_fp_detects_semantic_changes(tmp_path: Path, capsys):
+    """Test ZIIF berubah jika makna kode berubah."""
+    source1 = tmp_path / "a.zen"
+    source1.write_text("let x = 40 + 2", encoding="utf-8")
+    
+    source2 = tmp_path / "b.zen"
+    source2.write_text("let y = 40 + 2", encoding="utf-8")  # Ubah nama variabel
+    
+    main(["fp", str(source1)])
+    fp1 = capsys.readouterr().out.strip()
+    
+    main(["fp", str(source2)])
+    fp2 = capsys.readouterr().out.strip()
+    
+    assert fp1 != fp2
