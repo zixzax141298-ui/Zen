@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
+import platform
 import signal
 import sys
 import time
@@ -27,30 +29,40 @@ from zen import (
 )
 from zen.lexer import MAX_SOURCE_CHARS
 
+# ---------------------------------------------------------------------------
+# Terminal Colors (ANSI)
+# ---------------------------------------------------------------------------
+class Color:
+    RED = "\033[91m"
+    GREEN = "\033[92m"
+    YELLOW = "\033[93m"
+    BLUE = "\033[94m"
+    CYAN = "\033[96m"
+    RESET = "\033[0m"
+    BOLD = "\033[1m"
+
+    @classmethod
+    def disable(cls):
+        cls.RED = cls.GREEN = cls.YELLOW = cls.BLUE = cls.CYAN = cls.RESET = cls.BOLD = ""
 
 # ---------------------------------------------------------------------------
-# Exit codes (DISAMAKAN DENGAN TEST LAMA)
+# Exit Codes (Sesuai dengan Test CI Lama)
 # ---------------------------------------------------------------------------
 class ExitCode(IntEnum):
     OK = 0
-    SOURCE_ERROR = 1        
-    IO_ERROR = 1            # Dikembalikan ke 1 sesuai test
-    USAGE_ERROR = 2         # Dikembalikan ke 2 sesuai test
-    TIMEOUT = 124           
-    INTERRUPTED = 130       
-
+    SOURCE_ERROR = 1        # Lexer / Parser / Semantic / Runtime
+    IO_ERROR = 1            # File tidak ditemukan / tidak bisa dibaca
+    USAGE_ERROR = 2         # Argumen salah / ekstensi salah
+    TIMEOUT = 124           # Eksekusi melebihi batas waktu
+    INTERRUPTED = 130       # Ctrl+C (128 + SIGINT)
 
 class _ExecutionTimeout(Exception):
-    """Timeout eksekusi, dibedakan dari TimeoutError umum."""
-
+    pass
 
 class _CliError(Exception):
-    """Error CLI yang membawa exit code spesifik."""
-
     def __init__(self, message: str, code: ExitCode) -> None:
         super().__init__(message)
         self.code = code
-
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -61,10 +73,8 @@ def _version_string() -> str:
     except PackageNotFoundError:
         return "0.1.0"
 
-
 def _write_error(message: str, output: TextIO) -> None:
-    print(f"zen: {message}", file=output)
-
+    print(f"{Color.RED}zen: {message}{Color.RESET}", file=output)
 
 def _read_source(path: Path, error: TextIO) -> str:
     if path.suffix.lower() != ".zen":
@@ -74,18 +84,18 @@ def _read_source(path: Path, error: TextIO) -> str:
         )
     try:
         with path.open(encoding="utf-8") as source_file:
+            # Harus read MAX + 1 agar test mock requested_sizes == [9] berhasil
             source = source_file.read(MAX_SOURCE_CHARS + 1)
     except (OSError, UnicodeError) as exc:
         raise _CliError(f"cannot read {path}: {exc}", ExitCode.IO_ERROR) from exc
         
     if len(source) > MAX_SOURCE_CHARS:
-        # Menghapus prefix path agar sesuai dengan pencarian string di test lama
+        # Huruf 'S' kapital disesuaikan dengan test CI Anda
         raise _CliError(
-            f"source exceeds {MAX_SOURCE_CHARS} characters",
+            f"Source exceeds {MAX_SOURCE_CHARS} characters",
             ExitCode.SOURCE_ERROR,
         )
     return source
-
 
 def _validate_program(source: str):
     program = parse(source)
@@ -100,16 +110,14 @@ def _validate_program(source: str):
     SemanticAnalyzer().analyze_strict(program)
     return program
 
-
 @contextmanager
 def _timeout(seconds: float | None):
-    """Batasi waktu eksekusi via SIGALRM. No-op di Windows / saat seconds=None."""
     if seconds is None or seconds <= 0 or sys.platform == "win32":
         yield
         return
 
     def _handler(signum, frame):
-        raise _ExecutionTimeout(f"execution exceeded {seconds}s")
+        raise _ExecutionTimeout(f"Execution exceeded {seconds}s")
 
     previous = signal.signal(signal.SIGALRM, _handler)
     signal.setitimer(signal.ITIMER_REAL, seconds)
@@ -118,7 +126,6 @@ def _timeout(seconds: float | None):
     finally:
         signal.setitimer(signal.ITIMER_REAL, 0)
         signal.signal(signal.SIGALRM, previous)
-
 
 def _serialize_ast(node: Any) -> Any:
     if node is None or isinstance(node, (str, int, float, bool)):
@@ -140,13 +147,11 @@ def _serialize_ast(node: Any) -> Any:
         return out
     return repr(node)
 
-
 def _format_result(result: Any) -> str:
     return result if isinstance(result, str) else repr(result)
 
-
 # ---------------------------------------------------------------------------
-# Perintah: run / check
+# Core Commands (run, check, ast, tokens, format)
 # ---------------------------------------------------------------------------
 def run_file(
     path: Path,
@@ -182,7 +187,7 @@ def run_file(
         if json_output:
             print(json.dumps({"file": str(path), "status": "ok", "phase": "validate"}), file=output)
         else:
-            print(f"{path}: valid", file=output)
+            print(f"{Color.GREEN}✓ {path}: valid{Color.RESET}", file=output)
         if show_stats and not json_output:
             print(f"[stats] parse+analyze={1000 * (t1 - t0):.2f}ms", file=error)
         return int(ExitCode.OK)
@@ -223,7 +228,6 @@ def run_file(
 
     return int(ExitCode.OK)
 
-
 def dump_ast(path: Path, *, output: TextIO | None = None, error: TextIO | None = None) -> int:
     output = output or sys.stdout
     error = error or sys.stderr
@@ -241,7 +245,6 @@ def dump_ast(path: Path, *, output: TextIO | None = None, error: TextIO | None =
 
     print(json.dumps(_serialize_ast(program), indent=2), file=output)
     return int(ExitCode.OK)
-
 
 def dump_tokens(path: Path, *, output: TextIO | None = None, error: TextIO | None = None) -> int:
     output = output or sys.stdout
@@ -267,9 +270,44 @@ def dump_tokens(path: Path, *, output: TextIO | None = None, error: TextIO | Non
                 if val is not None:
                     extra = f"  {val!r}"
                     break
-        print(f"[{index:04d}] {name:<20}{extra}", file=output)
+        print(f"[{index:04d}] {Color.CYAN}{name:<20}{Color.RESET}{extra}", file=output)
     return int(ExitCode.OK)
 
+def format_source(path: Path, *, output: TextIO | None = None, error: TextIO | None = None) -> int:
+    """Fitur super basic formatter: validasi, lalu cetak ulang kode aslinya."""
+    output = output or sys.stdout
+    error = error or sys.stderr
+    try:
+        source = _read_source(path, error)
+        _validate_program(source)
+    except _CliError as exc:
+        _write_error(str(exc), error)
+        return int(exc.code)
+    except (LexerError, ParseError, SemanticError, ValueError) as exc:
+        _write_error(str(exc), error)
+        return int(ExitCode.SOURCE_ERROR)
+
+    # Untuk saat ini, kita hanya mengembalikan source yang sudah di-strip.
+    # Nanti bisa dikembangkan menggunakan AST Printer.
+    print(source.strip(), file=output)
+    return int(ExitCode.OK)
+
+def print_docs(output: TextIO | None = None) -> int:
+    output = output or sys.stdout
+    print(f"{Color.BOLD}Zen Language Quick Reference{Color.RESET}", file=output)
+    print("============================\n", file=output)
+    print("Variables:", file=output)
+    print("  let x = 10", file=output)
+    print("  const y = 20\n", file=output)
+    print("Functions:", file=output)
+    print("  fn add(a, b) {", file=output)
+    print("    return a + b", file=output)
+    print("  }\n", file=output)
+    print("Control Flow:", file=output)
+    print("  if (condition) { ... } else { ... }", file=output)
+    print("  while (condition) { ... }\n", file=output)
+    print("Run 'zen repl' to start exploring interactively.", file=output)
+    return int(ExitCode.OK)
 
 # ---------------------------------------------------------------------------
 # REPL
@@ -297,7 +335,6 @@ def _needs_more_input(source: str) -> bool:
             stack.pop()
 
     return bool(stack)
-
 
 class _ReplSession:
     def __init__(self) -> None:
@@ -337,17 +374,16 @@ class _ReplSession:
         self.statement_count = len(program.statements)
         return result
 
-
 def _print_repl_help(output: TextIO) -> None:
-    print("Zen interactive shell", file=output)
-    print("Enter a ZSS statement or expression. Multi-line blocks are supported.", file=output)
-    print(":help          Show this help", file=output)
-    print(":reset         Clear the current session", file=output)
-    print(":ast           Summarize the current session AST", file=output)
-    print(":load <file>   Load and execute a .zen file into the session", file=output)
-    print(":save <file>   Save the current session source to a file", file=output)
-    print(":quit          Exit the shell", file=output)
-
+    print(f"{Color.BOLD}Zen Interactive Shell{Color.RESET}", file=output)
+    print("Enter a ZSS statement or expression. Multi-line blocks are supported.\n", file=output)
+    print(f"{Color.CYAN}:help{Color.RESET}          Show this help", file=output)
+    print(f"{Color.CYAN}:reset{Color.RESET}         Clear the current session", file=output)
+    print(f"{Color.CYAN}:vars{Color.RESET}          List all defined global variables", file=output)
+    print(f"{Color.CYAN}:ast{Color.RESET}           Summarize the current session AST", file=output)
+    print(f"{Color.CYAN}:load <file>{Color.RESET}   Load and execute a .zen file into the session", file=output)
+    print(f"{Color.CYAN}:save <file>{Color.RESET}   Save the current session source to a file", file=output)
+    print(f"{Color.CYAN}:quit{Color.RESET}          Exit the shell", file=output)
 
 def run_repl(*, input_fn: Callable[[str], str] | None = None, output: TextIO | None = None) -> int:
     if input_fn is None:
@@ -358,16 +394,16 @@ def run_repl(*, input_fn: Callable[[str], str] | None = None, output: TextIO | N
     repl = _ReplSession()
     pending = ""
 
-    print(f"Zen v{_version_string()} interactive shell. Type :help for help.", file=output)
+    print(f"{Color.GREEN}Zen v{_version_string()} interactive shell.{Color.RESET} Type :help for help.", file=output)
 
     while True:
-        prompt = "... " if pending else ">>> "
+        prompt = f"{Color.YELLOW}... {Color.RESET}" if pending else f"{Color.BLUE}>>> {Color.RESET}"
 
         try:
             line = input_fn(prompt)
         except EOFError:
             if pending:
-                print("Incomplete input discarded.", file=output)
+                print("\nIncomplete input discarded.", file=output)
             print("Goodbye.", file=output)
             return int(ExitCode.OK)
         except KeyboardInterrupt:
@@ -391,6 +427,17 @@ def run_repl(*, input_fn: Callable[[str], str] | None = None, output: TextIO | N
             repl.reset()
             pending = ""
             print("Session reset.", file=output)
+            continue
+            
+        if command == ":vars":
+            vals = repl.interpreter.globals.values
+            if not vals:
+                print("No global variables defined.", file=output)
+            else:
+                for k, v in vals.items():
+                    is_const = k in repl.interpreter.globals.constants
+                    prefix = "const" if is_const else "let"
+                    print(f"  {prefix} {Color.CYAN}{k}{Color.RESET} = {_format_result(v)}", file=output)
             continue
 
         if command == ":ast":
@@ -452,23 +499,28 @@ def run_repl(*, input_fn: Callable[[str], str] | None = None, output: TextIO | N
         if result is not None:
             print(_format_result(result), file=output)
 
-
 # ---------------------------------------------------------------------------
-# Argparse
+# Argparse Setup
 # ---------------------------------------------------------------------------
 def _argument_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="zen",
-        description="Zen toolchain: run, check, inspect.",
+        description=f"{Color.BOLD}Zen Language Toolchain{Color.RESET} — run, check, and inspect ZSS code.",
     )
     parser.add_argument(
         "--version",
         action="version",
         version=f"%(prog)s {_version_string()}",
     )
+    parser.add_argument(
+        "--no-color",
+        action="store_true",
+        help="Disable ANSI colors in output",
+    )
 
     commands = parser.add_subparsers(dest="command", metavar="<command>")
 
+    # Command: run
     run_p = commands.add_parser("run", help="execute a .zen source file")
     run_p.add_argument("file", type=Path, help="path to a .zen source file")
     run_p.add_argument("--check", action="store_true", help="validate without executing")
@@ -476,28 +528,49 @@ def _argument_parser() -> argparse.ArgumentParser:
     run_p.add_argument("--stats", action="store_true", help="print timing statistics to stderr")
     run_p.add_argument("--timeout", type=float, default=None, metavar="SECONDS", help="abort execution after N seconds")
 
+    # Command: check
     check_p = commands.add_parser("check", help="validate a .zen source file")
     check_p.add_argument("file", type=Path, help="path to a .zen source file")
     check_p.add_argument("--json", action="store_true", help="emit machine-readable JSON to stdout")
 
+    # Command: ast
     ast_p = commands.add_parser("ast", help="dump the AST as JSON")
     ast_p.add_argument("file", type=Path, help="path to a .zen source file")
 
+    # Command: tokens
     tokens_p = commands.add_parser("tokens", help="dump the token stream")
     tokens_p.add_argument("file", type=Path, help="path to a .zen source file")
 
+    # Command: format
+    fmt_p = commands.add_parser("format", aliases=["fmt"], help="format a .zen source file")
+    fmt_p.add_argument("file", type=Path, help="path to a .zen source file")
+
+    # Command: docs
+    commands.add_parser("docs", help="print a quick reference guide for ZSS")
+
+    # Command: env
+    commands.add_parser("env", help="print environment and system information")
+
+    # Command: version (eksplisit)
     commands.add_parser("version", help="print the Zen version")
+    
+    # Command: repl
     commands.add_parser("repl", help="start the interactive shell")
 
     return parser
 
-
 # ---------------------------------------------------------------------------
-# Entry point (SystemExit DIKEMBALIKAN KE PERILAKU ASLINYA)
+# Entry Point
 # ---------------------------------------------------------------------------
 def main(argv: Sequence[str] | None = None) -> int:
-    # Sengaja TIDAK menggunakan try-except SystemExit agar pytest.raises(SystemExit) di test lama Anda bekerja.
-    args = _argument_parser().parse_args(argv)
+    parser = _argument_parser()
+    
+    # Hapus blok try-except SystemExit di sekitar parse_args
+    # agar test pytest.raises(SystemExit) bawaan Anda tetap jalan.
+    args = parser.parse_args(argv)
+
+    if getattr(args, "no_color", False):
+        Color.disable()
 
     try:
         if args.command == "run":
@@ -508,25 +581,35 @@ def main(argv: Sequence[str] | None = None) -> int:
                 show_stats=args.stats,
                 timeout=args.timeout,
             )
-        if args.command == "check":
+        elif args.command == "check":
             return run_file(
                 args.file,
                 check_only=True,
                 json_output=args.json,
             )
-        if args.command == "ast":
+        elif args.command == "ast":
             return dump_ast(args.file)
-        if args.command == "tokens":
+        elif args.command == "tokens":
             return dump_tokens(args.file)
-        if args.command == "version":
+        elif args.command in ("format", "fmt"):
+            return format_source(args.file)
+        elif args.command == "docs":
+            return print_docs()
+        elif args.command == "env":
+            print(f"Zen Version: {_version_string()}")
+            print(f"Python:      {platform.python_version()} ({platform.python_implementation()})")
+            print(f"OS:          {platform.system()} {platform.release()}")
+            return int(ExitCode.OK)
+        elif args.command == "version":
             print(_version_string())
             return int(ExitCode.OK)
         
+        # Default action if no subcommand is provided (atau `repl`)
         return run_repl()
+        
     except KeyboardInterrupt:
         _write_error("interrupted", sys.stderr)
         return int(ExitCode.INTERRUPTED)
-
 
 if __name__ == "__main__":
     sys.exit(main())
