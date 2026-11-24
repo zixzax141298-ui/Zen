@@ -2,9 +2,9 @@
 
 from dataclasses import dataclass, field
 
-from zen.limits import MAX_AST_NODES, MAX_PARSER_DEPTH
 from zen.ast.source_identity import SourceIdentifier
 from zen.ast.source_span import SourceSpan
+from zen.limits import MAX_AST_NODES, MAX_PARSER_DEPTH
 
 from .diagnostics import ParseError
 
@@ -81,13 +81,12 @@ class ParseContext:
         span: SourceSpan | None = None,
     ) -> "ParseContext":
 
-        depth = self.depth + 1
+        new_depth = self.depth + 1
 
-        if depth > MAX_PARSER_DEPTH:
+        if new_depth > MAX_PARSER_DEPTH:
             line, column = _location(span)
-
             raise ParseError(
-                "Parser nesting depth limit exceeded",
+                f"Maximum parser nesting depth of {MAX_PARSER_DEPTH} exceeded",
                 line,
                 column,
                 span,
@@ -95,7 +94,7 @@ class ParseContext:
             )
 
         return ParseContext(
-            depth=depth,
+            depth=new_depth,
             node_count=self.node_count,
             source_id=self.source_id,
         )
@@ -105,13 +104,12 @@ class ParseContext:
         span: SourceSpan | None = None,
     ) -> "ParseContext":
 
-        node_count = self.node_count + 1
+        new_count = self.node_count + 1
 
-        if node_count > MAX_AST_NODES:
+        if new_count > MAX_AST_NODES:
             line, column = _location(span)
-
             raise ParseError(
-                "Parser AST node-count limit exceeded",
+                f"Maximum AST node count of {MAX_AST_NODES} exceeded",
                 line,
                 column,
                 span,
@@ -120,6 +118,6 @@ class ParseContext:
 
         return ParseContext(
             depth=self.depth,
-            node_count=node_count,
+            node_count=new_count,
             source_id=self.source_id,
         )

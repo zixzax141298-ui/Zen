@@ -1,16 +1,12 @@
-"""Scope and symbol table for Zen semantic analysis.
-
-Block scope is the approved v0.1 design decision.
-Redeclaration rules (OQ-01) and name-resolution algorithm (OQ-04)
-are not finalized; the current implementation uses a conservative
-local-shadowing model and records unresolved policy points.
-"""
+"""Lexical scope and symbol table for semantic analysis."""
 
 from __future__ import annotations
 
+from collections.abc import Iterator
 from dataclasses import dataclass, field
 from enum import Enum, auto
-from typing import Iterator
+
+from zen.ast.source_span import SourceSpan
 
 
 class SymbolKind(Enum):
@@ -20,43 +16,32 @@ class SymbolKind(Enum):
     PARAMETER = auto()
 
 
-@dataclass(slots=True)
+@dataclass
 class Symbol:
     name: str
     kind: SymbolKind
-    # Declaration span for diagnostics (optional).
-    span: object | None = None
-    # Whether a variable has an initializer (relevant for OQ-02).
+    span: SourceSpan | None = None
     initialized: bool = False
-    # Arity for functions (None if not a function).
     arity: int | None = None
 
 
 @dataclass
 class Scope:
-    """A single lexical scope. Parent chain forms the scope stack."""
-
     parent: Scope | None = None
-    symbols: dict[str, Symbol] = field(default_factory=dict)
-    # True when this scope is a function body (affects return validation).
     is_function: bool = False
+    symbols: dict[str, Symbol] = field(default_factory=dict)
 
     def define(self, symbol: Symbol) -> bool:
-        """Define a symbol in this scope.
-
-        Returns True if the name was newly defined, False if it already
-        existed in *this* scope (redeclaration).
-
-        Note: OQ-01 (exact redeclaration rules) is unresolved. This method
-        reports conflict within the same scope; the analyzer decides policy.
-        """
+        """Define a symbol in this scope. Returns False if already defined."""
         if symbol.name in self.symbols:
             return False
         self.symbols[symbol.name] = symbol
         return True
 
+    def resolve_local(self, name: str) -> Symbol | None:
+        return self.symbols.get(name)
+
     def resolve(self, name: str) -> Symbol | None:
-        """Resolve a name by walking the parent chain (OQ-04 provisional)."""
         scope: Scope | None = self
         while scope is not None:
             if name in scope.symbols:
@@ -64,17 +49,13 @@ class Scope:
             scope = scope.parent
         return None
 
-    def resolve_local(self, name: str) -> Symbol | None:
-        return self.symbols.get(name)
-
-    def ancestors(self) -> Iterator[Scope]:
+    def in_function(self) -> bool:
         scope: Scope | None = self
         while scope is not None:
-            yield scope
-            scope = scope.parent
-
-    def in_function(self) -> bool:
-        for s in self.ancestors():
-            if s.is_function:
+            if scope.is_function:
                 return True
+            scope = scope.parent
         return False
+
+    def __iter__(self) -> Iterator[Symbol]:
+        return iter(self.symbols.values())

@@ -92,3 +92,32 @@ def test_analyze_strict_raises():
 
 def test_empty_program():
     assert analyze(parse("")) == []
+
+
+def test_shadow_inner_uninit_not_confused_with_outer():
+    src = """
+let x = 1
+fn f() {
+  let x
+  return x
+}
+"""
+    assert ZSS_S003_UNINITIALIZED in codes(src)
+
+
+def test_shadow_if_block_inner_uninit():
+    src = """
+let x = 1
+if (true) {
+  let x
+  x
+}
+"""
+    assert ZSS_S003_UNINITIALIZED in codes(src)
+
+
+def test_duplicate_related_span():
+    diags = analyze(parse("let a = 1\nlet a = 2"))
+    dups = [d for d in diags if d.code == ZSS_S002_DUPLICATE]
+    assert dups
+    assert dups[0].symbol == "a"
