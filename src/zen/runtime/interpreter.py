@@ -92,6 +92,21 @@ def _is_bool(value: Any) -> bool:
     return type(value) is bool
 
 
+def _is_primitive(value: Any) -> bool:
+    return type(value) in (int, float, bool, str) or value is None
+
+
+def _primitive_equal(left: Any, right: Any) -> bool:
+    """OQ-07: same-type primitive equality only; no function/object equality."""
+    if not _is_primitive(left) or not _is_primitive(right):
+        raise ZenRuntimeError(
+            "Equality is only defined for primitive values"
+        )
+    if type(left) is not type(right):
+        return False
+    return left == right
+
+
 class Interpreter:
     def __init__(self) -> None:
         self.globals = Environment()
@@ -263,13 +278,9 @@ class Interpreter:
                     return left > right
                 return left >= right
             if op == "==":
-                if type(left) is not type(right):
-                    return False
-                return left == right
+                return _primitive_equal(left, right)
             if op == "!=":
-                if type(left) is not type(right):
-                    return True
-                return left != right
+                return not _primitive_equal(left, right)
             raise ZenRuntimeError(f"Unknown binary operator '{op}'")
         if isinstance(expr, CallExpr):
             callee = self._evaluate(expr.callee)
