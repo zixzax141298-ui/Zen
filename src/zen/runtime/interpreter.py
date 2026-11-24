@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any
 
-from zen.limits import MAX_CALL_DEPTH, MAX_RUNTIME_STEPS
+from zen.limits import MAX_CALL_DEPTH, MAX_RUNTIME_STEPS, MAX_INTEGER_BITS
 
 from zen.ast.nodes import (
     AssignExpr,
@@ -92,6 +92,22 @@ def _is_number(value: Any) -> bool:
 
 def _is_bool(value: Any) -> bool:
     return type(value) is bool
+
+
+def _raise_integer_size_error(line: int | None = None) -> None:
+    raise ZenRuntimeError(
+        f"Integer size limit exceeded (maximum {MAX_INTEGER_BITS} bits)",
+        line,
+    )
+
+
+def _check_integer_size(
+    value: Any,
+    line: int | None = None,
+) -> Any:
+    if type(value) is int and value.bit_length() > MAX_INTEGER_BITS:
+        _raise_integer_size_error(line)
+    return value
 
 
 def _is_primitive(value: Any) -> bool:
@@ -195,11 +211,19 @@ class Interpreter:
         span = getattr(expr, "span", None)
         self._tick(span.start_line if span else None)
         if isinstance(expr, LiteralExpr):
-            return expr.value
+            return _check_integer_size(
+                expr.value, span.start_line if span else None
+            )
         if isinstance(expr, IdentifierExpr):
-            return self.env.get(expr.name)
+            return _check_integer_size(
+                self.env.get(expr.name),
+                span.start_line if span else None,
+            )
         if isinstance(expr, AssignExpr):
-            value = self._evaluate(expr.value)
+            value = _check_integer_size(
+                self._evaluate(expr.value),
+                span.start_line if span else None,
+            )
             if isinstance(expr.target, IdentifierExpr):
                 self.env.assign(expr.target.name, value)
             return value
@@ -220,7 +244,9 @@ class Interpreter:
                         "Operand of unary '-' must be a number",
                         expr.span.start_line if expr.span else None,
                     )
-                return -operand
+                return _check_integer_size(
+                    -operand, span.start_line if span else None
+                )
             raise ZenRuntimeError(f"Unknown unary operator '{expr.operator}'")
         if isinstance(expr, BinaryExpr):
             op = expr.operator
@@ -260,7 +286,9 @@ class Interpreter:
             right = self._evaluate(expr.right)
             if op == "+":
                 if _is_number(left) and _is_number(right):
-                    return left + right
+                    return _check_integer_size(
+                        left + right, span.start_line if span else None
+                    )
                 raise ZenRuntimeError(
                     "Operands of '+' must be numbers"
                 )
@@ -270,16 +298,34 @@ class Interpreter:
                         f"Operands of '{op}' must be numbers"
                     )
                 if op == "-":
-                    return left - right
+                    return _check_integer_size(
+                        left - right, span.start_line if span else None
+                    )
                 if op == "*":
-                    return left * right
+                    if (
+                        type(left) is int
+                        and type(right) is int
+                        and left != 0
+                        and right != 0
+                        and left.bit_length() + right.bit_length() - 1
+                        > MAX_INTEGER_BITS
+                    ):
+                        _raise_integer_size_error(
+                            span.start_line if span else None
+                        )
+                    return _check_integer_size(
+                        left * right,
+                        span.start_line if span else None,
+                    )
                 if op == "/":
                     if right == 0:
                         raise ZenRuntimeError("Division by zero")
                     return left / right
                 if right == 0:
                     raise ZenRuntimeError("Modulo by zero")
-                return left % right
+                return _check_integer_size(
+                    left % right, span.start_line if span else None
+                )
             if op in ("<", "<=", ">", ">="):
                 if not _is_number(left) or not _is_number(right):
                     raise ZenRuntimeError(
