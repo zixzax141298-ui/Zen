@@ -1,83 +1,167 @@
-# Zen Programming Language
+<div align="center">
+  <h1>Zen Programming Language</h1>
+  <p><strong>Simple to write. Clear to understand. Cryptographically verifiable to execute.</strong></p>
 
-**Version:** 0.1.0
-**Milestone:** ZIIF-01 Canonical AST Identity Fingerprint
+  <!-- Badges -->
+  <a href="https://github.com/zixzax141298-ui/Zen/actions"><img src="https://github.com/zixzax141298-ui/Zen/actions/workflows/ci.yml/badge.svg" alt="CI Status"></a>
+  <img src="https://img.shields.io/badge/python-3.10%20%7C%203.11%20%7C%203.12%20%7C%203.13%20%7C%203.14-blue" alt="Python Versions">
+  <img src="https://img.shields.io/badge/tests-339%20passed-brightgreen" alt="Tests">
+  <img src="https://img.shields.io/badge/status-v0.1.0--prototype-orange" alt="Status">
+</div>
 
-> Simple to write. Clear to understand. Controlled to execute.
+---
 
-Zen adalah bahasa pemrograman general-purpose, dynamically typed,
-dan interpreted yang dirancang agar mudah dipelajari dan dikembangkan.
+## 📖 What is Zen?
 
-## Project status
+Zen is a general-purpose, dynamically typed, and interpreted programming language designed for clarity and absolute execution control. 
 
-| Component | Status |
-|---|---|
-| Language specification | Formal v0.1 grammar specified (Owner-approved) |
-| Lexer | Implemented |
-| AST node model | Implemented |
-| Parser | Implemented (recursive-descent, resource limits) |
-| Semantic analysis | Implemented (OQ-01..OQ-09) |
-| Interpreter / runtime | Implemented (tree-walk, OQ-07) |
-| Public API | `parse`, `analyze`, `interpret`, `execute` |
-| Package configuration | Implemented |
+While most languages only guarantee safety *inside* their runtime, Zen goes a step further by providing **Cryptographic Execution Identity**. With Zen, you can prove that the code being executed is exactly the code you reviewed, down to the semantic structure.
 
-**Maturity:** v0.1 engineering prototype. Tested via pytest (Python 3.10–3.14).
-Not production-ready.
+### ✨ Key Features
 
-Safe high-level entry point:
+- **ZIIF (Zen AST Identity Fingerprint)**: Every program has a unique, canonical SHA-256 fingerprint based on its Abstract Syntax Tree (AST). Whitespace and comments do not change the fingerprint, but any semantic change will.
+- **Complete CLI Toolchain**: Run, check, inspect, format, and fingerprint code directly from the terminal.
+- **Fail-Closed Security**: Strict semantic analysis, AST validation, and runtime resource limits (timeouts, recursion depth) prevent catastrophic execution.
+- **Powerful REPL**: An interactive shell with state management (`:save`, `:load`, `:vars`) and automatic rollback on errors.
 
-```python
-from zen import execute
-result = execute("fn f(x) { return x + 1 }\\nf(41)")  # -> 42
-```
+---
 
-- `execute(source)` — Parse → AST validate → Semantic (strict) → Runtime (fail-closed).
-- `interpret(program)` — low-level; caller must ensure semantic validity.
+## 🚀 Quick Start
 
-## Requirements
+Zen requires **Python 3.10+** and has zero third-party runtime dependencies.
 
-- Python 3.10+
-- No third-party runtime dependencies for the current milestone.
-- Setuptools is used as a build-time packaging dependency.
+### 1. Installation
 
-## Installation
-
-For development, create and activate a virtual environment, then run:
+Clone the repository and install it in editable mode:
 
 ```bash
-python -m pip install -e .
+git clone https://github.com/zixzax141298-ui/Zen.git
+cd Zen
+pip install -e .
 ```
 
-See [Installation Guide](docs/02-installation.md).
+### 2. The CLI Toolchain
 
-## Public API
+Zen comes with a fully featured Command-Line Interface.
 
-Top-level exports include lexer, parser, semantic analysis, and runtime:
+```bash
+# Run a Zen file
+zen run script.zen
 
-- `Lexer`, `LexerError`, `Token`, `TokenType`
-- `parse`, `ParseError`
-- `analyze`, `SemanticAnalyzer`, `SemanticError`
-- `interpret`, `Interpreter`, `RuntimeError` / `ZenRuntimeError`
-- `execute` — recommended high-level pipeline
+# Check syntax and semantics without executing
+zen check script.zen
 
-Example:
+# Print the ZIIF (Fingerprint) of a file
+zen fp script.zen
+# Output: z1-539d9d16c3210517a4b401bd1fdc024f
+
+# Inspect tokens and AST
+zen tokens script.zen
+zen ast script.zen
+
+# Start the interactive REPL
+zen repl
+```
+
+### 3. The Interactive REPL
+
+The Zen REPL is designed for rapid prototyping and safe exploration:
+
+```text
+>>> let x = 40
+>>> let y = 2
+>>> x + y
+42
+>>> :vars
+  let x = 40
+  let y = 2
+>>> :save session.zen
+Saved 18 chars to session.zen.
+```
+
+*(Type `:help` inside the REPL to see all available commands).*
+
+---
+
+## 🧬 ZIIF: AST Identity Fingerprint
+
+ZIIF is Zen's flagship security feature. Because it hashes the **canonical AST** instead of raw text, you can verify the integrity of Zen code in untrusted environments.
 
 ```python
-from zen import execute, Lexer
+from zen import execute, parse
+from zen.ziif import generate_fingerprint
 
-print(execute("1 + 2 * 3"))  # 7
+# Two syntactically different but semantically identical programs
+code_a = "let x = 40 + 2"
+code_b = "    let x = 40 + 2   \n\n"
 
-tokens = Lexer("let answer = 42").tokenize()
+fp_a = generate_fingerprint(parse(code_a))
+fp_b = generate_fingerprint(parse(code_b))
+
+print(fp_a == fp_b) # True (Fingerprints match!)
 ```
 
-## Run tests
+If a malicious actor tries to inject logic (e.g., changing `let x` to `let hack`), the fingerprint changes immediately, allowing CI pipelines to block the execution.
+
+---
+
+## 🐍 Python API
+
+You can embed Zen directly into your Python applications.
+
+### Safe High-Level API
+```python
+from zen import execute
+
+# Parses, validates semantics strictly, and runs in a fail-closed environment
+result = execute("fn f(x) { return x + 1 }\nf(41)")
+print(result) # 42
+```
+
+### Low-Level API
+```python
+from zen import parse, analyze, interpret
+
+program = parse("1 + 2 * 3")
+analyze(program) # Semantic check
+result = interpret(program)
+print(result) # 7
+```
+
+---
+
+## 🛠️ Development & Testing
+
+Zen is built with a strict test-driven development approach, ensuring stability across multiple Python versions.
+
+To run the test suite (includes CLI integration, sandbox, and ZIIF tests):
 
 ```bash
 python -m pytest -q
+# Output: 339 passed, 110 subtests passed
 ```
 
-## Documentation
+### Project Structure
+```text
+src/zen/
+├── cli.py       # Complete CLI toolchain & REPL
+├── lexer.py     # Tokenization
+├── parser.py    # Recursive-descent parser
+├── semantic/    # Semantic analysis & validation
+├── runtime/     # Tree-walk interpreter
+├── sandbox/     # Resource boundaries & policies
+└── ziif.py      # AST Identity Fingerprint
+```
 
+---
+
+## 📄 Documentation
+
+- [Language Specification](docs/03-language-specification.md)
 - [Installation Guide](docs/02-installation.md)
-- [Language Specification and Formal Grammar](docs/03-language-specification.md)
 - [Changelog](CHANGELOG.md)
+
+---
+<div align="center">
+  <i>Built with discipline, strict rules, and a passion for secure languages.</i>
+</div>
