@@ -30,6 +30,7 @@ from zen.ast.nodes import (
 from zen.ast.source_identity import SourceIdentifier
 from zen.ast.source_span import SourceSpan
 from zen.lexer import Lexer, Token, TokenType
+from zen.limits import MAX_PARSER_DEPTH
 from zen.parser.context import ParseContext
 from zen.parser.diagnostics import ParseError
 
@@ -54,7 +55,19 @@ def parse(
 
     tokens = Lexer(source).tokenize()
     parser = _Parser(tokens, source_id)
-    return parser.parse_program()
+    try:
+        return parser.parse_program()
+    except RecursionError:
+        # Nested expressions can exhaust the Python call stack before
+        # MAX_PARSER_DEPTH enters complete (each grouping walks the full
+        # expression precedence chain). Surface a controlled ParseError.
+        raise ParseError(
+            f"Maximum parser nesting depth of {MAX_PARSER_DEPTH} exceeded",
+            1,
+            1,
+            None,
+            source_id=source_id,
+        ) from None
 
 
 class _Parser:
@@ -267,6 +280,20 @@ class _Parser:
             source_id=self.source_id,
         )
 
+    def _push_depth(self, span: SourceSpan) -> ParseContext:
+        """Enter nested depth; return previous context for restore."""
+        previous = self.ctx
+        self.ctx = self.ctx.enter(span)
+        return previous
+
+    def _pop_depth(self, previous: ParseContext) -> None:
+        """Restore outer depth; keep cumulative node_count."""
+        self.ctx = ParseContext(
+            depth=previous.depth,
+            node_count=self.ctx.node_count,
+            source_id=self.source_id,
+        )
+
     def _block(self) -> BlockStmt:
         start = self._consume(TokenType.LEFT_BRACE, "Expected '{'")
         previous_ctx = self.ctx
@@ -307,8 +334,12 @@ class _Parser:
         ):
             name_tok = self._advance()
             self._advance()
-            value = self._assignment()
             target_span = self._token_span(name_tok)
+            previous = self._push_depth(target_span)
+            try:
+                value = self._assignment()
+            finally:
+                self._pop_depth(previous)
             self.ctx = self.ctx.track_node(target_span)
             target = IdentifierExpr(
                 span=target_span,
@@ -381,8 +412,13 @@ class _Parser:
     def _unary(self) -> Expression:
         if self._match(TokenType.BANG, TokenType.MINUS):
             op = self._previous()
-            operand = self._unary()
-            span = self._span_merge(self._token_span(op), operand.span)
+            op_span = self._token_span(op)
+            previous = self._push_depth(op_span)
+            try:
+                operand = self._unary()
+            finally:
+                self._pop_depth(previous)
+            span = self._span_merge(op_span, operand.span)
             self.ctx = self.ctx.track_node(span)
             return UnaryExpr(
                 span=span,
@@ -468,13 +504,18 @@ class _Parser:
 
         if self._match(TokenType.LEFT_PAREN):
             open_tok = self._previous()
-            self._skip_newlines_only()
-            expr = self._expression()
-            self._skip_newlines_only()
-            close_tok = self._consume(
-                TokenType.RIGHT_PAREN,
-                "Expected ')' after expression",
-            )
+            open_span = self._token_span(open_tok)
+            previous = self._push_depth(open_span)
+            try:
+                self._skip_newlines_only()
+                expr = self._expression()
+                self._skip_newlines_only()
+                close_tok = self._consume(
+                    TokenType.RIGHT_PAREN,
+                    "Expected ')' after expression",
+                )
+            finally:
+                self._pop_depth(previous)
             span = self._span_from_tokens(open_tok, close_tok)
             self.ctx = self.ctx.track_node(span)
             return GroupingExpr(
