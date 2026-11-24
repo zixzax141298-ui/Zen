@@ -5,6 +5,8 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any
 
+from zen.limits import MAX_CALL_DEPTH, MAX_RUNTIME_STEPS
+
 from zen.ast.nodes import (
     AssignExpr,
     BinaryExpr,
@@ -111,14 +113,25 @@ class Interpreter:
     def __init__(self) -> None:
         self.globals = Environment()
         self.env = self.globals
+        self._runtime_steps = 0
+        self._call_depth = 0
+
+    def _tick(self, line: int | None = None) -> None:
+        self._runtime_steps += 1
+        if self._runtime_steps > MAX_RUNTIME_STEPS:
+            raise ZenRuntimeError("Runtime step limit exceeded", line)
 
     def interpret(self, program: Program) -> Any:
+        self._runtime_steps = 0
+        self._call_depth = 0
         result: Any = None
         for stmt in program.statements:
             result = self._execute(stmt)
         return result
 
     def _execute(self, stmt: Statement) -> Any:
+        span = getattr(stmt, "span", None)
+        self._tick(span.start_line if span else None)
         if isinstance(stmt, VarDecl):
             value = None
             if stmt.initializer is not None:
@@ -179,6 +192,8 @@ class Interpreter:
         return result
 
     def _evaluate(self, expr: Expression) -> Any:
+        span = getattr(expr, "span", None)
+        self._tick(span.start_line if span else None)
         if isinstance(expr, LiteralExpr):
             return expr.value
         if isinstance(expr, IdentifierExpr):
@@ -297,14 +312,21 @@ class Interpreter:
         )
 
     def _call(self, fn: ZenFunction, args: list[Any]) -> Any:
-        env = Environment(parent=fn.closure)
-        for name, value in zip(fn.declaration.parameters, args):
-            env.define(name, value)
+        if self._call_depth >= MAX_CALL_DEPTH:
+            raise ZenRuntimeError("Maximum function call depth exceeded")
+
+        self._call_depth += 1
         try:
-            self._execute_block(fn.declaration.body, env)
-        except ReturnSignal as ret:
-            return ret.value
-        return None
+            env = Environment(parent=fn.closure)
+            for name, value in zip(fn.declaration.parameters, args):
+                env.define(name, value)
+            try:
+                self._execute_block(fn.declaration.body, env)
+            except ReturnSignal as ret:
+                return ret.value
+            return None
+        finally:
+            self._call_depth -= 1
 
 
 def interpret(program: Program) -> Any:

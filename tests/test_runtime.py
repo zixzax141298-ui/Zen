@@ -122,3 +122,36 @@ def test_primitive_equality_matrix():
     assert _run("true == false") is False
     assert _run('"a" == "a"') is True
     assert _run("1 != 2") is True
+
+
+def test_runtime_step_limit_exact_boundary(monkeypatch):
+    from zen.runtime import interpreter as interpreter_module
+
+    monkeypatch.setattr(interpreter_module, "MAX_RUNTIME_STEPS", 2)
+    assert interpret(parse("1")) == 1
+
+
+def test_runtime_step_limit_exceeded(monkeypatch):
+    from zen.runtime import interpreter as interpreter_module
+
+    monkeypatch.setattr(interpreter_module, "MAX_RUNTIME_STEPS", 1)
+    with pytest.raises(RuntimeError, match="Runtime step limit exceeded"):
+        interpret(parse("1"))
+
+
+def test_infinite_loop_stops_at_runtime_limit(monkeypatch):
+    from zen.runtime import interpreter as interpreter_module
+
+    monkeypatch.setattr(interpreter_module, "MAX_RUNTIME_STEPS", 40)
+    source = "let i = 0\nwhile (true) { i = i + 1 }"
+    with pytest.raises(RuntimeError, match="Runtime step limit exceeded"):
+        interpret(parse(source))
+
+
+def test_function_call_depth_limit(monkeypatch):
+    from zen.runtime import interpreter as interpreter_module
+
+    monkeypatch.setattr(interpreter_module, "MAX_CALL_DEPTH", 3)
+    source = "fn recurse() { recurse() }\nrecurse()"
+    with pytest.raises(RuntimeError, match="Maximum function call depth exceeded"):
+        interpret(parse(source))

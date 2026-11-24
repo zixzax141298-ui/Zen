@@ -21,3 +21,10 @@ MAX_PARSER_DEPTH = 256
 MAX_DIRECT_CHILDREN = 262_144
 MAX_EXPRESSION_NODES = 262_144
 MAX_STATEMENT_NODES = 262_144
+
+
+# Runtime budget: approximately nine AST operations per simple loop iteration.
+MAX_RUNTIME_STEPS = 50_000_000
+
+# Keep Zen recursion comfortably below Python's own recursion limit.
+MAX_CALL_DEPTH = 64
