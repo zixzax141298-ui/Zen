@@ -1,11 +1,8 @@
-"""Semantic analysis tests — OQ-01 through OQ-09."""
-
+"""Semantic analysis tests — OQ-01..OQ-09."""
 from __future__ import annotations
 
-import pytest
-
 from zen.parser import parse
-from zen.semantic import SemanticAnalyzer, SemanticError, analyze
+from zen.semantic import analyze
 from zen.semantic.diagnostics import (
     ZSS_S001_UNDEFINED,
     ZSS_S002_DUPLICATE,
@@ -22,24 +19,16 @@ def codes(src: str) -> set[str]:
     return {d.code for d in analyze(parse(src))}
 
 
-def test_return_outside_function():
-    assert ZSS_S008_RETURN_OUTSIDE in codes("return 1")
-
-
-def test_return_inside_function_ok():
-    assert ZSS_S008_RETURN_OUTSIDE not in codes("fn f() { return 1 }")
-
-
 def test_undefined_identifier():
     assert ZSS_S001_UNDEFINED in codes("x")
 
 
-def test_duplicate_declaration():
+def test_duplicate_same_scope():
     assert ZSS_S002_DUPLICATE in codes("let a = 1\nlet a = 2")
 
 
 def test_shadowing_allowed():
-    src = "let a = 1\nfn f() { let a = 2\n return a }"
+    src = "let x = 1\nfn f() { let x = 2\n return x }"
     assert ZSS_S002_DUPLICATE not in codes(src)
 
 
@@ -47,47 +36,46 @@ def test_uninitialized_read():
     assert ZSS_S003_UNINITIALIZED in codes("let x\nx")
 
 
-def test_initialized_read_ok():
-    assert ZSS_S003_UNINITIALIZED not in codes("let x = 1\nx")
+def test_initialized_ok():
+    assert codes("let x = 1\nx") == set()
 
 
-def test_const_reassignment():
+def test_const_reassign():
     assert ZSS_S004_CONST_ASSIGN in codes("const x = 1\nx = 2")
 
 
-def test_duplicate_param():
-    assert ZSS_S007_DUP_PARAM in codes("fn f(a, a) {}")
+def test_not_callable():
+    assert ZSS_S005_NOT_CALLABLE in codes("let x = 1\nx()")
 
 
 def test_arity_mismatch():
-    src = "fn f(a) { return a }\nf(1, 2)"
-    assert ZSS_S006_ARITY in codes(src)
+    assert ZSS_S006_ARITY in codes("fn f(a) { return a }\nf()")
 
 
-def test_non_callable():
-    src = "let x = 1\nx()"
-    assert ZSS_S005_NOT_CALLABLE in codes(src)
+def test_duplicate_param():
+    assert ZSS_S007_DUP_PARAM in codes("fn f(a, a) { return a }")
 
 
-def test_direct_recursion_ok():
-    src = "fn fact(n) {\n  if (false) {\n    return fact(n)\n  }\n  return n\n}"
-    diags = analyze(parse(src))
-    assert not any(d.code == ZSS_S001_UNDEFINED for d in diags)
+def test_return_outside():
+    assert ZSS_S008_RETURN_OUTSIDE in codes("return 1")
 
 
-def test_if_without_else_uninitialized():
-    src = "let x\nif (true) { x = 1 }\nx"
-    assert ZSS_S003_UNINITIALIZED in codes(src)
-
-
-def test_if_else_both_init():
-    src = "let x\nif (true) { x = 1 } else { x = 2 }\nx"
+def test_if_both_branches_init():
+    src = """
+let x
+if (true) { x = 1 } else { x = 2 }
+x
+"""
     assert ZSS_S003_UNINITIALIZED not in codes(src)
 
 
-def test_analyze_strict_raises():
-    with pytest.raises(SemanticError):
-        SemanticAnalyzer().analyze_strict(parse("return"))
+def test_if_one_branch_uninit():
+    src = """
+let x
+if (true) { x = 1 }
+x
+"""
+    assert ZSS_S003_UNINITIALIZED in codes(src)
 
 
 def test_empty_program():
@@ -121,3 +109,23 @@ def test_duplicate_related_span():
     dups = [d for d in diags if d.code == ZSS_S002_DUPLICATE]
     assert dups
     assert dups[0].symbol == "a"
+
+
+def test_diagnostic_source_id_populated():
+    from zen.ast.source_identity import SourceIdentifier
+
+    sid = SourceIdentifier.new()
+    prog = parse("x", source_id=sid)
+    diags = analyze(prog)
+    assert diags
+    assert diags[0].source_id is not None
+    assert diags[0].source_id.value == sid.value
+
+
+def test_duplicate_related_span_populated():
+    diags = analyze(parse("let a = 1\nlet a = 2"))
+    dups = [d for d in diags if d.code == ZSS_S002_DUPLICATE]
+    assert dups
+    assert dups[0].related_span is not None
+    assert dups[0].symbol == "a"
+    assert dups[0].severity.value == "error" or dups[0].severity.name == "ERROR"

@@ -6,12 +6,13 @@ import pytest
 
 from zen.parser import parse
 from zen.runtime import RuntimeError, interpret
-from zen.semantic import SemanticAnalyzer
+from zen.semantic import SemanticAnalyzer, SemanticError
 
 
 def _run(src: str):
+    """Fail-closed-ish helper: analyze strict then interpret."""
     prog = parse(src)
-    SemanticAnalyzer().analyze(prog)
+    SemanticAnalyzer().analyze_strict(prog)
     return interpret(prog)
 
 
@@ -87,9 +88,16 @@ def test_cross_type_equality():
     assert _run("1 == 1") is True
 
 
-def test_const_assign_runtime():
-    with pytest.raises(RuntimeError):
+def test_const_assign_caught_by_semantic():
+    """Const reassignment is a semantic error on the fail-closed path."""
+    with pytest.raises(SemanticError, match="constant"):
         _run("const x = 1\nx = 2")
+
+
+def test_const_assign_runtime_defense():
+    """If semantic is bypassed, runtime still rejects const assign."""
+    with pytest.raises(RuntimeError, match="constant"):
+        interpret(parse("const x = 1\nx = 2"))
 
 
 def test_string_addition_rejected():
@@ -100,3 +108,17 @@ def test_string_addition_rejected():
 def test_return_signal_not_leaked():
     with pytest.raises(RuntimeError, match="return"):
         interpret(parse("return 1"))
+
+
+def test_function_equality_rejected():
+    src = "fn f() { return 1 }\nfn g() { return 2 }\nf == g"
+    with pytest.raises(RuntimeError, match="primitive"):
+        _run(src)
+
+
+def test_primitive_equality_matrix():
+    assert _run("1 == 1") is True
+    assert _run("1 == 2") is False
+    assert _run("true == false") is False
+    assert _run('"a" == "a"') is True
+    assert _run("1 != 2") is True

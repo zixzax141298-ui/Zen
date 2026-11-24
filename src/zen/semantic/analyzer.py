@@ -44,11 +44,13 @@ class SemanticAnalyzer:
         self._scope = Scope()
         # Definite assignment tracks Symbol object identity, not bare names.
         self._initialized: set[int] = set()
+        self._source_id = None
 
     def analyze(self, program: Program) -> list[SemanticDiagnostic]:
         self.diagnostics.clear()
         self._scope = Scope()
         self._initialized = set()
+        self._source_id = getattr(program, "source_id", None)
         for stmt in program.statements:
             self._statement(stmt)
         self.diagnostics.sort(
@@ -321,6 +323,7 @@ class SemanticAnalyzer:
                 span=s,
                 symbol=symbol,
                 related_span=related,
+                source_id=self._source_id,
             )
         )
 
