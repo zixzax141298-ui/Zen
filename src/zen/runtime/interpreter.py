@@ -231,10 +231,8 @@ class Interpreter:
             if op == "+":
                 if _is_number(left) and _is_number(right):
                     return left + right
-                if type(left) is str and type(right) is str:
-                    return left + right
                 raise ZenRuntimeError(
-                    "Operands of '+' must be two numbers or two strings"
+                    "Operands of '+' must be numbers"
                 )
             if op in ("-", "*", "/", "%"):
                 if not _is_number(left) or not _is_number(right):
@@ -299,4 +297,7 @@ class Interpreter:
 
 
 def interpret(program: Program) -> Any:
-    return Interpreter().interpret(program)
+    try:
+        return Interpreter().interpret(program)
+    except ReturnSignal:
+        raise ZenRuntimeError("'return' used outside of a function") from None
