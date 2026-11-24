@@ -9,7 +9,7 @@
 - pip.
 - Setuptools 64 or newer for building and editable installation.
 
-The current Zen lexer has no third-party runtime dependencies.
+The Zen package has no third-party runtime dependencies.
 
 ## Create a virtual environment
 
@@ -51,16 +51,21 @@ python -c "from zen import Lexer, LexerError, Token, TokenType; print('Zen API: 
 ## Run tests
 
 ```bash
-python -m unittest discover -s tests -v
+python -m pip install pytest
+python -m pytest -q
 ```
+
+The test suite imports `pytest`, so `unittest discover` alone does not run
+every module.
 
 ## Current limitations
 
-- Only the lexer is implemented.
-- Parser, AST, interpreter, and runtime are planned.
-- The public API is intentionally limited to the four lexer symbols.
-- This installation guide does not imply that Zen programs can yet be
-  executed end-to-end.
+- The lexer, parser, AST validation, semantic analysis, and tree-walk
+  interpreter are implemented (see README project status).
+- The public API is documented in `docs/engineering/ZSS_PUBLIC_API_CONTRACT.md`.
+- Zen is an engineering prototype and is not production-ready.
+- There is no command-line runner yet; programs are run through the Python
+  API, for example `from zen import execute`.
 
 ## Packaging notes
 

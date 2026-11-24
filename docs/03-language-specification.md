@@ -1,7 +1,7 @@
 # Zen Language Specification — v0.1.0
 
 **Milestone:** ZB-05 Formal Grammar
-**Status:** Formal syntax specified; parser not yet implemented
+**Status:** Formal syntax specified; parser implemented in `src/zen/parser` (see README project status)
 **Source extension:** `.zen`
 
 ## 1. Purpose

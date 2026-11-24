@@ -10,7 +10,7 @@ It does not imply that components marked as future work are implemented.
   not import or depend on lexer implementation details or lexer limits.
 - **Parser owns grammar validity, resource limits, and diagnostics.** It
   consumes tokens, constructs AST nodes, enforces AST node/depth limits, and
-  reports source-located diagnostics. Parser grammar is not implemented yet.
+  reports source-located diagnostics. The v0.1 grammar parser is implemented in `src/zen/parser`.
 - **AST owns structural invariants.** AST nodes are immutable canonical data
   structures. They validate child types, child-span containment, direct
   collection bounds, and source-ordered non-overlapping siblings. Explicit
