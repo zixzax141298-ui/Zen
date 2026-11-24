@@ -4,6 +4,12 @@ All notable project changes are recorded here.
 This file distinguishes implemented functionality from specified syntax
 and planned work.
 
+## [Unreleased] — post-PR #40
+
+### Documentation
+- ZSS-03 / ZSS-04 / ZSS-05 status headers: document approval vs implementation vs verification.
+- Added `docs/engineering/ZSS_OQ_VERIFICATION_EVIDENCE.md` (OQ-01..OQ-09 evidence matrix).
+
 ## [Unreleased] — post-PR #39 residuals
 
 ### Fixed
@@ -12,7 +18,6 @@ and planned work.
 - Runtime function equality rejected under OQ-07 primitive-only equality (regression tests).
 
 ### Documentation
-- ZSS-03 / ZSS-04 / ZSS-05 status headers reconciled: document approval vs implementation vs verification.
 - Added `docs/engineering/ZSS_PUBLIC_API_CONTRACT.md` (`execute` vs low-level APIs).
 
 ## [0.1.0] — ZSS pipeline (through PR #39)
