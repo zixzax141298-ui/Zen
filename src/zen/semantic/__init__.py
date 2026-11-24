@@ -5,15 +5,15 @@ Does not re-parse source or mutate the canonical AST.
 """
 
 from .analyzer import SemanticAnalyzer, analyze
-from .diagnostics import SemanticError, SemanticDiagnostic
+from .diagnostics import SemanticDiagnostic, SemanticError
 from .scope import Scope, Symbol, SymbolKind
 
 __all__ = [
-    "SemanticAnalyzer",
-    "analyze",
-    "SemanticError",
-    "SemanticDiagnostic",
     "Scope",
+    "SemanticAnalyzer",
+    "SemanticDiagnostic",
+    "SemanticError",
     "Symbol",
     "SymbolKind",
+    "analyze",
 ]
