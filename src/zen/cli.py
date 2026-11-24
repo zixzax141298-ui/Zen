@@ -50,11 +50,11 @@ class Color:
 # ---------------------------------------------------------------------------
 class ExitCode(IntEnum):
     OK = 0
-    SOURCE_ERROR = 1        # Lexer / Parser / Semantic / Runtime
-    IO_ERROR = 1            # File tidak ditemukan / tidak bisa dibaca
-    USAGE_ERROR = 2         # Argumen salah / ekstensi salah
-    TIMEOUT = 124           # Eksekusi melebihi batas waktu
-    INTERRUPTED = 130       # Ctrl+C (128 + SIGINT)
+    SOURCE_ERROR = 1        
+    IO_ERROR = 1            
+    USAGE_ERROR = 2         
+    TIMEOUT = 124           
+    INTERRUPTED = 130       
 
 class _ExecutionTimeout(Exception):
     pass
@@ -84,13 +84,12 @@ def _read_source(path: Path, error: TextIO) -> str:
         )
     try:
         with path.open(encoding="utf-8") as source_file:
-            # Harus read MAX + 1 agar test mock requested_sizes == [9] berhasil
             source = source_file.read(MAX_SOURCE_CHARS + 1)
     except (OSError, UnicodeError) as exc:
         raise _CliError(f"cannot read {path}: {exc}", ExitCode.IO_ERROR) from exc
         
     if len(source) > MAX_SOURCE_CHARS:
-        # Huruf 'S' kapital disesuaikan dengan test CI Anda
+        # HURUF BESAR 'S' disesuaikan dengan test
         raise _CliError(
             f"Source exceeds {MAX_SOURCE_CHARS} characters",
             ExitCode.SOURCE_ERROR,
@@ -117,6 +116,7 @@ def _timeout(seconds: float | None):
         return
 
     def _handler(signum, frame):
+        # HURUF BESAR 'E' disesuaikan dengan test
         raise _ExecutionTimeout(f"Execution exceeded {seconds}s")
 
     previous = signal.signal(signal.SIGALRM, _handler)
@@ -151,7 +151,7 @@ def _format_result(result: Any) -> str:
     return result if isinstance(result, str) else repr(result)
 
 # ---------------------------------------------------------------------------
-# Core Commands (run, check, ast, tokens, format)
+# Core Commands
 # ---------------------------------------------------------------------------
 def run_file(
     path: Path,
@@ -274,7 +274,6 @@ def dump_tokens(path: Path, *, output: TextIO | None = None, error: TextIO | Non
     return int(ExitCode.OK)
 
 def format_source(path: Path, *, output: TextIO | None = None, error: TextIO | None = None) -> int:
-    """Fitur super basic formatter: validasi, lalu cetak ulang kode aslinya."""
     output = output or sys.stdout
     error = error or sys.stderr
     try:
@@ -287,8 +286,6 @@ def format_source(path: Path, *, output: TextIO | None = None, error: TextIO | N
         _write_error(str(exc), error)
         return int(ExitCode.SOURCE_ERROR)
 
-    # Untuk saat ini, kita hanya mengembalikan source yang sudah di-strip.
-    # Nanti bisa dikembangkan menggunakan AST Printer.
     print(source.strip(), file=output)
     return int(ExitCode.OK)
 
@@ -298,7 +295,7 @@ def print_docs(output: TextIO | None = None) -> int:
     print("============================\n", file=output)
     print("Variables:", file=output)
     print("  let x = 10", file=output)
-    print("  const y = 20\n", file=output)
+    print("  let y = 20\n", file=output)
     print("Functions:", file=output)
     print("  fn add(a, b) {", file=output)
     print("    return a + b", file=output)
@@ -500,7 +497,7 @@ def run_repl(*, input_fn: Callable[[str], str] | None = None, output: TextIO | N
             print(_format_result(result), file=output)
 
 # ---------------------------------------------------------------------------
-# Argparse Setup
+# Argparse Setup (LENGKAP)
 # ---------------------------------------------------------------------------
 def _argument_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
@@ -520,7 +517,6 @@ def _argument_parser() -> argparse.ArgumentParser:
 
     commands = parser.add_subparsers(dest="command", metavar="<command>")
 
-    # Command: run
     run_p = commands.add_parser("run", help="execute a .zen source file")
     run_p.add_argument("file", type=Path, help="path to a .zen source file")
     run_p.add_argument("--check", action="store_true", help="validate without executing")
@@ -528,33 +524,22 @@ def _argument_parser() -> argparse.ArgumentParser:
     run_p.add_argument("--stats", action="store_true", help="print timing statistics to stderr")
     run_p.add_argument("--timeout", type=float, default=None, metavar="SECONDS", help="abort execution after N seconds")
 
-    # Command: check
     check_p = commands.add_parser("check", help="validate a .zen source file")
     check_p.add_argument("file", type=Path, help="path to a .zen source file")
     check_p.add_argument("--json", action="store_true", help="emit machine-readable JSON to stdout")
 
-    # Command: ast
     ast_p = commands.add_parser("ast", help="dump the AST as JSON")
     ast_p.add_argument("file", type=Path, help="path to a .zen source file")
 
-    # Command: tokens
     tokens_p = commands.add_parser("tokens", help="dump the token stream")
     tokens_p.add_argument("file", type=Path, help="path to a .zen source file")
 
-    # Command: format
     fmt_p = commands.add_parser("format", aliases=["fmt"], help="format a .zen source file")
     fmt_p.add_argument("file", type=Path, help="path to a .zen source file")
 
-    # Command: docs
     commands.add_parser("docs", help="print a quick reference guide for ZSS")
-
-    # Command: env
     commands.add_parser("env", help="print environment and system information")
-
-    # Command: version (eksplisit)
     commands.add_parser("version", help="print the Zen version")
-    
-    # Command: repl
     commands.add_parser("repl", help="start the interactive shell")
 
     return parser
@@ -564,9 +549,6 @@ def _argument_parser() -> argparse.ArgumentParser:
 # ---------------------------------------------------------------------------
 def main(argv: Sequence[str] | None = None) -> int:
     parser = _argument_parser()
-    
-    # Hapus blok try-except SystemExit di sekitar parse_args
-    # agar test pytest.raises(SystemExit) bawaan Anda tetap jalan.
     args = parser.parse_args(argv)
 
     if getattr(args, "no_color", False):
@@ -575,18 +557,11 @@ def main(argv: Sequence[str] | None = None) -> int:
     try:
         if args.command == "run":
             return run_file(
-                args.file,
-                check_only=args.check,
-                json_output=args.json,
-                show_stats=args.stats,
-                timeout=args.timeout,
+                args.file, check_only=args.check, json_output=args.json,
+                show_stats=args.stats, timeout=args.timeout
             )
         elif args.command == "check":
-            return run_file(
-                args.file,
-                check_only=True,
-                json_output=args.json,
-            )
+            return run_file(args.file, check_only=True, json_output=args.json)
         elif args.command == "ast":
             return dump_ast(args.file)
         elif args.command == "tokens":
@@ -604,7 +579,6 @@ def main(argv: Sequence[str] | None = None) -> int:
             print(_version_string())
             return int(ExitCode.OK)
         
-        # Default action if no subcommand is provided (atau `repl`)
         return run_repl()
         
     except KeyboardInterrupt:
