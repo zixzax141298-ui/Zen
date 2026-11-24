@@ -90,3 +90,13 @@ def test_cross_type_equality():
 def test_const_assign_runtime():
     with pytest.raises(RuntimeError):
         _run("const x = 1\nx = 2")
+
+
+def test_string_addition_rejected():
+    with pytest.raises(RuntimeError, match="numbers"):
+        _run('"a" + "b"')
+
+
+def test_return_signal_not_leaked():
+    with pytest.raises(RuntimeError, match="return"):
+        interpret(parse("return 1"))
