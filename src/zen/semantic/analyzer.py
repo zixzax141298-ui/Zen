@@ -2,16 +2,38 @@
 from __future__ import annotations
 
 from zen.ast.nodes import (
-    AssignExpr, BinaryExpr, BlockStmt, CallExpr, Expression, ExpressionStmt,
-    FunctionDecl, GroupingExpr, IdentifierExpr, IfStmt, LiteralExpr, Program,
-    ReturnStmt, Statement, UnaryExpr, VarDecl, WhileStmt,
+    AssignExpr,
+    BinaryExpr,
+    BlockStmt,
+    CallExpr,
+    Expression,
+    ExpressionStmt,
+    FunctionDecl,
+    GroupingExpr,
+    IdentifierExpr,
+    IfStmt,
+    LiteralExpr,
+    Program,
+    ReturnStmt,
+    Statement,
+    UnaryExpr,
+    VarDecl,
+    WhileStmt,
 )
 from zen.ast.source_span import SourceSpan
+
 from .diagnostics import (
-    SemanticDiagnostic, SemanticError, SemanticSeverity,
-    ZSS_S001_UNDEFINED, ZSS_S002_DUPLICATE, ZSS_S003_UNINITIALIZED,
-    ZSS_S004_CONST_ASSIGN, ZSS_S005_NOT_CALLABLE, ZSS_S006_ARITY,
-    ZSS_S007_DUP_PARAM, ZSS_S008_RETURN_OUTSIDE,
+    ZSS_S001_UNDEFINED,
+    ZSS_S002_DUPLICATE,
+    ZSS_S003_UNINITIALIZED,
+    ZSS_S004_CONST_ASSIGN,
+    ZSS_S005_NOT_CALLABLE,
+    ZSS_S006_ARITY,
+    ZSS_S007_DUP_PARAM,
+    ZSS_S008_RETURN_OUTSIDE,
+    SemanticDiagnostic,
+    SemanticError,
+    SemanticSeverity,
 )
 from .scope import Scope, Symbol, SymbolKind
 
