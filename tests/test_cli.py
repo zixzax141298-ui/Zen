@@ -5,6 +5,8 @@ from pathlib import Path
 
 import pytest
 
+from zen.runtime import RuntimeError
+
 from zen.cli import main, run_file, run_repl
 
 
@@ -167,3 +169,70 @@ def test_repl_reset_clears_previous_variables():
     rendered = output.getvalue()
     assert "Session reset." in rendered
     assert "Undefined identifier 'counter'" in rendered
+# CORE-01 regression coverage: failed REPL submissions are transactional.
+
+def test_repl_rolls_back_partial_assignment_and_preserves_session_metadata():
+    from zen.cli import _ReplSession
+
+    session = _ReplSession()
+    session.execute_submission("let counter = 2")
+
+    previous_source = session.source
+    previous_statement_count = session.statement_count
+
+    with pytest.raises(RuntimeError, match="Division by zero"):
+        session.execute_submission("counter = 3\n1 / 0")
+
+    assert session.interpreter.globals.get("counter") == 2
+    assert session.source == previous_source
+    assert session.statement_count == previous_statement_count
+
+    assert session.execute_submission("counter = counter + 1") == 3
+    assert session.execute_submission("counter") == 3
+
+
+@pytest.mark.parametrize(
+    ("submission", "name", "is_constant"),
+    [
+        ("let transient = 9\n1 / 0", "transient", False),
+        ("const transient_const = 9\n1 / 0", "transient_const", True),
+        (
+            "fn transient_fn() { return 1 }\n1 / 0",
+            "transient_fn",
+            False,
+        ),
+    ],
+)
+def test_repl_rolls_back_new_global_declarations(
+    submission,
+    name,
+    is_constant,
+):
+    from zen.cli import _ReplSession
+
+    session = _ReplSession()
+
+    with pytest.raises(RuntimeError, match="Division by zero"):
+        session.execute_submission(submission)
+
+    assert name not in session.interpreter.globals.values
+
+    if is_constant:
+        assert name not in session.interpreter.globals.constants
+
+
+def test_repl_rolls_back_global_mutation_through_function():
+    from zen.cli import _ReplSession
+
+    session = _ReplSession()
+    session.execute_submission(
+        "let counter = 2\n"
+        "fn bump() {\n"
+        "  counter = counter + 1\n"
+        "}"
+    )
+
+    with pytest.raises(RuntimeError, match="Division by zero"):
+        session.execute_submission("bump()\n1 / 0")
+
+    assert session.interpreter.globals.get("counter") == 2

@@ -155,3 +155,74 @@ def test_function_call_depth_limit(monkeypatch):
     source = "fn recurse() { recurse() }\nrecurse()"
     with pytest.raises(RuntimeError, match="Maximum function call depth exceeded"):
         interpret(parse(source))
+# CORE-01 regression coverage: interpreter lifecycle and failure semantics.
+
+def test_interpreter_state_persists_across_interpret_calls():
+    from zen.runtime.interpreter import Interpreter
+
+    interpreter = Interpreter()
+    interpreter.interpret(parse("let persistent_value = 41"))
+
+    assert interpreter.interpret(parse("persistent_value + 1")) == 42
+
+
+def test_direct_interpreter_failure_retains_prior_mutations():
+    from zen.runtime.interpreter import Interpreter
+
+    interpreter = Interpreter()
+    interpreter.interpret(parse("let counter = 1"))
+
+    with pytest.raises(RuntimeError, match="Division by zero"):
+        interpreter.interpret(parse("counter = 2\n1 / 0"))
+
+    assert interpreter.interpret(parse("counter")) == 2
+
+
+def test_interpreter_restores_environment_after_block_failure():
+    from zen.runtime.interpreter import Interpreter
+
+    interpreter = Interpreter()
+
+    with pytest.raises(RuntimeError, match="Division by zero"):
+        interpreter.interpret(parse("if (true) {\n  1 / 0\n}"))
+
+    assert interpreter.env is interpreter.globals
+
+
+def test_interpreter_restores_call_depth_after_recursive_failure(monkeypatch):
+    from zen.runtime import interpreter as interpreter_module
+    from zen.runtime.interpreter import Interpreter
+
+    monkeypatch.setattr(interpreter_module, "MAX_CALL_DEPTH", 2)
+
+    interpreter = Interpreter()
+
+    with pytest.raises(
+        RuntimeError,
+        match="Maximum function call depth exceeded",
+    ):
+        interpreter.interpret(
+            parse("fn recurse() { recurse() }\nrecurse()")
+        )
+
+    assert interpreter._call_depth == 0
+    assert interpreter.env is interpreter.globals
+
+
+def test_interpreter_resets_runtime_counter_after_failed_invocation(
+    monkeypatch,
+):
+    from zen.runtime import interpreter as interpreter_module
+    from zen.runtime.interpreter import Interpreter
+
+    monkeypatch.setattr(interpreter_module, "MAX_RUNTIME_STEPS", 2)
+
+    interpreter = Interpreter()
+
+    with pytest.raises(RuntimeError, match="Runtime step limit exceeded"):
+        interpreter.interpret(parse("1 + 2"))
+
+    monkeypatch.setattr(interpreter_module, "MAX_RUNTIME_STEPS", 100)
+
+    assert interpreter.interpret(parse("42")) == 42
+    assert interpreter._runtime_steps == 2
