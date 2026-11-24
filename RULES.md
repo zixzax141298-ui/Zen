@@ -136,12 +136,37 @@ Read `SECURITY.md` before security-sensitive work. Security-sensitive work inclu
 
 ## 14. Milestone Status and Active Work
 
-### ZSS — Zen Structured Syntax
+### Core-First Development
 
-**Status: ACTIVE — sole active ZEN workstream; highest priority.**
+**Status: ACTIVE — current development direction.**
 
-ZSS is the only active workstream for syntax architecture, specification
-governance, and documentation.
+ZEN follows a Core-First development direction. Development prioritizes the
+language core, runtime correctness, measurable verification, and architectural
+integrity. Code implementation and tests take priority over speculative
+documentation; documentation must follow verified implementation and reflect
+actual repository evidence.
+
+### CORE-01 — Interpreter Lifecycle and Failure Semantics
+
+**Status: ACTIVE — read-only audit and test-matrix preparation.**
+
+Owner-approved decisions:
+- Interpreter lifecycle: `PERSISTENT`. Repeated calls to
+  `Interpreter.interpret()` on the same instance preserve its globals/session.
+- Direct Interpreter failure atomicity: `RETAIN`. State changes made before a
+  runtime failure remain on that Interpreter instance.
+- REPL failed submission: `ROLLBACK`. The REPL restores the submission's
+  pre-execution state when that submission fails.
+
+CORE-01 is currently limited to read-only audit, test-matrix preparation, and
+reporting. These decisions do not authorize implementation. Separate explicit
+Owner approval is required before implementation begins.
+
+### Preserved Workstreams
+
+#### ZSS — Zen Structured Syntax
+
+**Status: PRESERVED — previously active and Owner-approved workstream.**
 
 - **ZSS-01:** COMPLETED — Owner-approved Grammar Baseline &
   Design Foundation merged into main. Its approved baseline must remain
@@ -163,6 +188,10 @@ future independently governed ZEN subsystems.
 
 Specification approval does not authorize implementation. Separate explicit
 Owner approval is required before implementation or migration execution.
+
+Core-First prioritization does not delete, invalidate, or silently close ZSS,
+ZB-07, ZIIF-01, or other preserved workstreams. Their history and artifacts
+must remain available and accurately classified.
 
 ## 15. ZEAI Security and Authority
 
