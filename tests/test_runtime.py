@@ -1,42 +1,103 @@
-"""Runtime / OQ-07 evaluation tests."""
+"""Runtime tests — OQ-07 evaluation contract."""
+
 from __future__ import annotations
 
 import pytest
 
 from zen.parser import parse
 from zen.runtime import RuntimeError, interpret
-from zen.semantic import SemanticAnalyzer
+from zen.semantic import SemanticAnalyzer, SemanticError
 
 
 def _run(src: str):
-    program = parse(src)
-    SemanticAnalyzer().analyze_strict(program)
-    return interpret(program)
+    """Fail-closed-ish helper: analyze strict then interpret."""
+    prog = parse(src)
+    SemanticAnalyzer().analyze_strict(prog)
+    return interpret(prog)
 
 
-def test_arithmetic():
+def test_literal_and_arithmetic():
     assert _run("1 + 2 * 3") == 7
+    assert _run("(1 + 2) * 3") == 9
+
+
+def test_variables():
+    assert _run("let x = 10\nx") == 10
+
+
+def test_assignment():
+    assert _run("let x = 1\nx = 5\nx") == 5
+
+
+def test_function_call():
+    src = "fn add(a, b) {\n  return a + b\n}\nadd(2, 3)"
+    assert _run(src) == 5
+
+
+def test_if_else():
+    src = "let x = 0\nif (true) {\n  x = 1\n} else {\n  x = 2\n}\nx"
+    assert _run(src) == 1
+
+
+def test_while():
+    src = (
+        "let i = 0\nlet sum = 0\n"
+        "while (i < 5) {\n  sum = sum + i\n  i = i + 1\n}\nsum"
+    )
+    assert _run(src) == 10
+
+
+def test_div_by_zero():
+    with pytest.raises(RuntimeError, match="Division by zero"):
+        _run("1 / 0")
 
 
 def test_short_circuit_and():
-    src = """
-fn boom() { return 1 / 0 }
-false && boom()
-"""
+    src = (
+        "let called = false\n"
+        "fn f() { called = true\n return true }\n"
+        "false && f()\n"
+        "called"
+    )
     assert _run(src) is False
 
 
 def test_short_circuit_or():
-    src = """
-fn boom() { return 1 / 0 }
-true || boom()
-"""
-    assert _run(src) is True
+    src = (
+        "let called = false\n"
+        "fn f() { called = true\n return false }\n"
+        "true || f()\n"
+        "called"
+    )
+    assert _run(src) is False
 
 
-def test_if_requires_bool():
+def test_non_boolean_if_condition():
     with pytest.raises(RuntimeError, match="Boolean"):
-        _run("if (1) { 2 }")
+        _run("if (1) { 0 }")
+
+
+def test_bool_not_numeric():
+    with pytest.raises(RuntimeError, match="number"):
+        _run("true + 1")
+
+
+def test_cross_type_equality():
+    assert _run("1 == true") is False
+    assert _run("1 != true") is True
+    assert _run("1 == 1") is True
+
+
+def test_const_assign_caught_by_semantic():
+    """Const reassignment is a semantic error on the fail-closed path."""
+    with pytest.raises(SemanticError, match="constant"):
+        _run("const x = 1\nx = 2")
+
+
+def test_const_assign_runtime_defense():
+    """If semantic is bypassed, runtime still rejects const assign."""
+    with pytest.raises(RuntimeError, match="constant"):
+        interpret(parse("const x = 1\nx = 2"))
 
 
 def test_string_addition_rejected():
@@ -47,17 +108,6 @@ def test_string_addition_rejected():
 def test_return_signal_not_leaked():
     with pytest.raises(RuntimeError, match="return"):
         interpret(parse("return 1"))
-
-
-def test_cross_type_equality():
-    assert _run("1 == true") is False
-    assert _run("1 != true") is True
-    assert _run("1 == 1") is True
-
-
-def test_const_assign_runtime():
-    with pytest.raises(RuntimeError):
-        _run("const x = 1\nx = 2")
 
 
 def test_function_equality_rejected():
