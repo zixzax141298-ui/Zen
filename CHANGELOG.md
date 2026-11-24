@@ -4,6 +4,14 @@ All notable project changes are recorded here.
 This file distinguishes implemented functionality from specified syntax
 and planned work.
 
+## [Unreleased] — docs status sync
+
+### Documentation
+- `docs/03-language-specification.md`: status metadata corrected; parser is implemented. Grammar, semantics, examples, and resource limits unchanged.
+- `docs/02-installation.md`: implementation status, public API pointer, and test command corrected.
+- `docs/architecture/boundaries.md`: parser status corrected.
+- OQ-01..OQ-09 decisions and implementation references are recorded in `docs/engineering/ZSS_OQ_VERIFICATION_EVIDENCE.md`; this entry does not restate them.
+
 ## [Unreleased] — post-PR #40
 
 ### Documentation
