@@ -23,6 +23,10 @@ MAX_EXPRESSION_NODES = 262_144
 MAX_STATEMENT_NODES = 262_144
 
 
+# Initial configurable ceiling for one integer value (magnitude).
+# This is a runtime resource policy, not a language capability ceiling.
+MAX_INTEGER_BITS = 65_536
+
 # Runtime budget: approximately nine AST operations per simple loop iteration.
 MAX_RUNTIME_STEPS = 50_000_000
 

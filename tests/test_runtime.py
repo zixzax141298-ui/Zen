@@ -226,3 +226,97 @@ def test_interpreter_resets_runtime_counter_after_failed_invocation(
 
     assert interpreter.interpret(parse("42")) == 42
     assert interpreter._runtime_steps == 2
+
+# CORE-03A: integer resource safety.
+
+def test_integer_size_limit_allows_exact_boundary(monkeypatch):
+    from zen.runtime import interpreter as interpreter_module
+
+    monkeypatch.setattr(interpreter_module, "MAX_INTEGER_BITS", 8)
+    assert _run("127 + 1") == 128
+
+
+def test_integer_size_limit_rejects_oversized_literal(monkeypatch):
+    from zen.runtime import interpreter as interpreter_module
+
+    monkeypatch.setattr(interpreter_module, "MAX_INTEGER_BITS", 8)
+
+    with pytest.raises(RuntimeError, match="Integer size limit exceeded"):
+        _run("256")
+
+
+def test_integer_size_limit_rejects_addition_growth(monkeypatch):
+    from zen.runtime import interpreter as interpreter_module
+
+    monkeypatch.setattr(interpreter_module, "MAX_INTEGER_BITS", 8)
+
+    with pytest.raises(RuntimeError, match="Integer size limit exceeded"):
+        _run("255 + 1")
+
+
+def test_integer_size_limit_preflights_multiplication_growth(monkeypatch):
+    from zen.runtime import interpreter as interpreter_module
+    from zen.runtime.interpreter import Interpreter
+
+    monkeypatch.setattr(interpreter_module, "MAX_INTEGER_BITS", 8)
+
+    interpreter = Interpreter()
+    interpreter.globals.define("large", 128)
+    interpreter.globals.define("factor", 2)
+
+    with pytest.raises(RuntimeError, match="Integer size limit exceeded"):
+        interpreter.interpret(parse("large * factor"))
+
+
+def test_integer_size_limit_checks_ambiguous_multiplication_result(monkeypatch):
+    from zen.runtime import interpreter as interpreter_module
+
+    monkeypatch.setattr(interpreter_module, "MAX_INTEGER_BITS", 8)
+
+    # Operand bit lengths do not prove overflow before multiplication.
+    # The resulting 465 requires 9 bits and must be rejected.
+    with pytest.raises(RuntimeError, match="Integer size limit exceeded"):
+        _run("15 * 31")
+
+
+def test_integer_size_limit_allows_multiplication_at_boundary(monkeypatch):
+    from zen.runtime import interpreter as interpreter_module
+
+    monkeypatch.setattr(interpreter_module, "MAX_INTEGER_BITS", 8)
+    assert _run("15 * 16") == 240
+
+
+def test_integer_size_limit_checks_persistent_global_values(monkeypatch):
+    from zen.runtime import interpreter as interpreter_module
+    from zen.runtime.interpreter import Interpreter
+
+    monkeypatch.setattr(interpreter_module, "MAX_INTEGER_BITS", 8)
+
+    interpreter = Interpreter()
+    interpreter.globals.define("oversized", 256)
+
+    with pytest.raises(RuntimeError, match="Integer size limit exceeded"):
+        interpreter.interpret(parse("oversized"))
+
+
+def test_integer_size_failure_does_not_apply_assignment(monkeypatch):
+    from zen.runtime import interpreter as interpreter_module
+    from zen.runtime.interpreter import Interpreter
+
+    monkeypatch.setattr(interpreter_module, "MAX_INTEGER_BITS", 8)
+
+    interpreter = Interpreter()
+    interpreter.interpret(parse("let value = 1"))
+
+    with pytest.raises(RuntimeError, match="Integer size limit exceeded"):
+        interpreter.interpret(parse("value = 256"))
+
+    # CORE-01 direct failure semantics remain RETAIN.
+    assert interpreter.interpret(parse("value")) == 1
+
+
+def test_integer_size_limit_does_not_affect_float_arithmetic(monkeypatch):
+    from zen.runtime import interpreter as interpreter_module
+
+    monkeypatch.setattr(interpreter_module, "MAX_INTEGER_BITS", 8)
+    assert _run("1.5 * 2.0") == 3.0
