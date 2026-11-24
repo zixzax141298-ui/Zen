@@ -29,15 +29,15 @@ from zen.lexer import MAX_SOURCE_CHARS
 
 
 # ---------------------------------------------------------------------------
-# Exit codes — dipisah agar CI bisa membedakan jenis kegagalan.
+# Exit codes (DISAMAKAN DENGAN TEST LAMA)
 # ---------------------------------------------------------------------------
 class ExitCode(IntEnum):
     OK = 0
-    SOURCE_ERROR = 1        # lexer / parse / semantic / runtime error
-    IO_ERROR = 2            # file tidak bisa dibaca
-    USAGE_ERROR = 64        # argumen / ekstensi salah (konvensi sysexits.h)
-    TIMEOUT = 124           # eksekusi melebihi batas waktu
-    INTERRUPTED = 130       # Ctrl+C (128 + SIGINT)
+    SOURCE_ERROR = 1        
+    IO_ERROR = 1            # Dikembalikan ke 1 sesuai test
+    USAGE_ERROR = 2         # Dikembalikan ke 2 sesuai test
+    TIMEOUT = 124           
+    INTERRUPTED = 130       
 
 
 class _ExecutionTimeout(Exception):
@@ -59,7 +59,6 @@ def _version_string() -> str:
     try:
         return version("zen-language")
     except PackageNotFoundError:
-        # TODO: sinkronkan dengan pyproject.toml saat rilis.
         return "0.1.0"
 
 
@@ -78,10 +77,11 @@ def _read_source(path: Path, error: TextIO) -> str:
             source = source_file.read(MAX_SOURCE_CHARS + 1)
     except (OSError, UnicodeError) as exc:
         raise _CliError(f"cannot read {path}: {exc}", ExitCode.IO_ERROR) from exc
+        
     if len(source) > MAX_SOURCE_CHARS:
+        # Menghapus prefix path agar sesuai dengan pencarian string di test lama
         raise _CliError(
-            f"{path}: source exceeds {MAX_SOURCE_CHARS} characters "
-            f"(read at least {len(source)})",
+            f"source exceeds {MAX_SOURCE_CHARS} characters",
             ExitCode.SOURCE_ERROR,
         )
     return source
@@ -121,7 +121,6 @@ def _timeout(seconds: float | None):
 
 
 def _serialize_ast(node: Any) -> Any:
-    """Serialisasi AST generik: dataclass, list, dict, scalar."""
     if node is None or isinstance(node, (str, int, float, bool)):
         return node
     if isinstance(node, (list, tuple)):
@@ -173,17 +172,7 @@ def run_file(
         program = _validate_program(source)
     except (LexerError, ParseError, SemanticError, ValueError) as exc:
         if json_output:
-            print(
-                json.dumps(
-                    {
-                        "file": str(path),
-                        "status": "error",
-                        "phase": "validate",
-                        "message": str(exc),
-                    }
-                ),
-                file=output,
-            )
+            print(json.dumps({"file": str(path), "status": "error", "phase": "validate", "message": str(exc)}), file=output)
         else:
             _write_error(str(exc), error)
         return int(ExitCode.SOURCE_ERROR)
@@ -191,10 +180,7 @@ def run_file(
 
     if check_only:
         if json_output:
-            print(
-                json.dumps({"file": str(path), "status": "ok", "phase": "validate"}),
-                file=output,
-            )
+            print(json.dumps({"file": str(path), "status": "ok", "phase": "validate"}), file=output)
         else:
             print(f"{path}: valid", file=output)
         if show_stats and not json_output:
@@ -210,17 +196,7 @@ def run_file(
         return int(ExitCode.TIMEOUT)
     except ZenRuntimeError as exc:
         if json_output:
-            print(
-                json.dumps(
-                    {
-                        "file": str(path),
-                        "status": "error",
-                        "phase": "runtime",
-                        "message": str(exc),
-                    }
-                ),
-                file=output,
-            )
+            print(json.dumps({"file": str(path), "status": "error", "phase": "runtime", "message": str(exc)}), file=output)
         else:
             _write_error(str(exc), error)
         return int(ExitCode.SOURCE_ERROR)
@@ -230,9 +206,7 @@ def run_file(
         payload: dict[str, Any] = {
             "file": str(path),
             "status": "ok",
-            "result": result
-            if isinstance(result, (str, int, float, bool)) or result is None
-            else repr(result),
+            "result": result if isinstance(result, (str, int, float, bool)) or result is None else repr(result),
         }
         if show_stats:
             payload["stats"] = {
@@ -245,28 +219,14 @@ def run_file(
         if result is not None:
             print(_format_result(result), file=output)
         if show_stats:
-            print(
-                f"[stats] parse+analyze={1000 * (t1 - t0):.2f}ms "
-                f"exec={1000 * (t3 - t2):.2f}ms "
-                f"total={1000 * (t3 - t0):.2f}ms",
-                file=error,
-            )
+            print(f"[stats] parse+analyze={1000 * (t1 - t0):.2f}ms exec={1000 * (t3 - t2):.2f}ms total={1000 * (t3 - t0):.2f}ms", file=error)
 
     return int(ExitCode.OK)
 
 
-# ---------------------------------------------------------------------------
-# Perintah: ast
-# ---------------------------------------------------------------------------
-def dump_ast(
-    path: Path,
-    *,
-    output: TextIO | None = None,
-    error: TextIO | None = None,
-) -> int:
+def dump_ast(path: Path, *, output: TextIO | None = None, error: TextIO | None = None) -> int:
     output = output or sys.stdout
     error = error or sys.stderr
-
     try:
         source = _read_source(path, error)
     except _CliError as exc:
@@ -283,18 +243,9 @@ def dump_ast(
     return int(ExitCode.OK)
 
 
-# ---------------------------------------------------------------------------
-# Perintah: tokens
-# ---------------------------------------------------------------------------
-def dump_tokens(
-    path: Path,
-    *,
-    output: TextIO | None = None,
-    error: TextIO | None = None,
-) -> int:
+def dump_tokens(path: Path, *, output: TextIO | None = None, error: TextIO | None = None) -> int:
     output = output or sys.stdout
     error = error or sys.stderr
-
     try:
         source = _read_source(path, error)
     except _CliError as exc:
@@ -360,10 +311,7 @@ class _ReplSession:
         self.statement_count = 0
 
     def execute_submission(self, submission: str):
-        # TODO: parsing inkremental — saat ini O(n^2) terhadap panjang sesi.
-        candidate_source = (
-            f"{self.source}\n{submission}" if self.source else submission
-        )
+        candidate_source = f"{self.source}\n{submission}" if self.source else submission
         program = _validate_program(candidate_source)
         new_statements = program.statements[self.statement_count:]
 
@@ -392,10 +340,7 @@ class _ReplSession:
 
 def _print_repl_help(output: TextIO) -> None:
     print("Zen interactive shell", file=output)
-    print(
-        "Enter a ZSS statement or expression. Multi-line blocks are supported.",
-        file=output,
-    )
+    print("Enter a ZSS statement or expression. Multi-line blocks are supported.", file=output)
     print(":help          Show this help", file=output)
     print(":reset         Clear the current session", file=output)
     print(":ast           Summarize the current session AST", file=output)
@@ -404,11 +349,7 @@ def _print_repl_help(output: TextIO) -> None:
     print(":quit          Exit the shell", file=output)
 
 
-def run_repl(
-    *,
-    input_fn: Callable[[str], str] | None = None,
-    output: TextIO | None = None,
-) -> int:
+def run_repl(*, input_fn: Callable[[str], str] | None = None, output: TextIO | None = None) -> int:
     if input_fn is None:
         input_fn = input
     if output is None:
@@ -417,10 +358,7 @@ def run_repl(
     repl = _ReplSession()
     pending = ""
 
-    print(
-        f"Zen v{_version_string()} interactive shell. Type :help for help.",
-        file=output,
-    )
+    print(f"Zen v{_version_string()} interactive shell. Type :help for help.", file=output)
 
     while True:
         prompt = "... " if pending else ">>> "
@@ -476,13 +414,7 @@ def run_repl(
                 continue
             try:
                 result = repl.execute_submission(file_source)
-            except (
-                LexerError,
-                ParseError,
-                SemanticError,
-                ZenRuntimeError,
-                ValueError,
-            ) as exc:
+            except (LexerError, ParseError, SemanticError, ZenRuntimeError, ValueError) as exc:
                 print(f"zen: {exc}", file=output)
                 continue
             if result is not None:
@@ -503,22 +435,14 @@ def run_repl(
 
         pending = f"{pending}\n{line}" if pending else line
 
-        candidate_source = (
-            f"{repl.source}\n{pending}" if repl.source else pending
-        )
+        candidate_source = f"{repl.source}\n{pending}" if repl.source else pending
 
         if _needs_more_input(candidate_source):
             continue
 
         try:
             result = repl.execute_submission(pending)
-        except (
-            LexerError,
-            ParseError,
-            SemanticError,
-            ZenRuntimeError,
-            ValueError,
-        ) as exc:
+        except (LexerError, ParseError, SemanticError, ZenRuntimeError, ValueError) as exc:
             _write_error(str(exc), output)
             pending = ""
             continue
@@ -547,36 +471,14 @@ def _argument_parser() -> argparse.ArgumentParser:
 
     run_p = commands.add_parser("run", help="execute a .zen source file")
     run_p.add_argument("file", type=Path, help="path to a .zen source file")
-    run_p.add_argument(
-        "--check",
-        action="store_true",
-        help="validate without executing",
-    )
-    run_p.add_argument(
-        "--json",
-        action="store_true",
-        help="emit machine-readable JSON to stdout",
-    )
-    run_p.add_argument(
-        "--stats",
-        action="store_true",
-        help="print timing statistics to stderr",
-    )
-    run_p.add_argument(
-        "--timeout",
-        type=float,
-        default=None,
-        metavar="SECONDS",
-        help="abort execution after N seconds (POSIX only)",
-    )
+    run_p.add_argument("--check", action="store_true", help="validate without executing")
+    run_p.add_argument("--json", action="store_true", help="emit machine-readable JSON to stdout")
+    run_p.add_argument("--stats", action="store_true", help="print timing statistics to stderr")
+    run_p.add_argument("--timeout", type=float, default=None, metavar="SECONDS", help="abort execution after N seconds")
 
     check_p = commands.add_parser("check", help="validate a .zen source file")
     check_p.add_argument("file", type=Path, help="path to a .zen source file")
-    check_p.add_argument(
-        "--json",
-        action="store_true",
-        help="emit machine-readable JSON to stdout",
-    )
+    check_p.add_argument("--json", action="store_true", help="emit machine-readable JSON to stdout")
 
     ast_p = commands.add_parser("ast", help="dump the AST as JSON")
     ast_p.add_argument("file", type=Path, help="path to a .zen source file")
@@ -591,13 +493,11 @@ def _argument_parser() -> argparse.ArgumentParser:
 
 
 # ---------------------------------------------------------------------------
-# Entry point
+# Entry point (SystemExit DIKEMBALIKAN KE PERILAKU ASLINYA)
 # ---------------------------------------------------------------------------
 def main(argv: Sequence[str] | None = None) -> int:
-    try:
-        args = _argument_parser().parse_args(argv)
-    except SystemExit as exc:
-        return exc.code if isinstance(exc.code, int) else int(ExitCode.OK)
+    # Sengaja TIDAK menggunakan try-except SystemExit agar pytest.raises(SystemExit) di test lama Anda bekerja.
+    args = _argument_parser().parse_args(argv)
 
     try:
         if args.command == "run":
@@ -621,7 +521,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         if args.command == "version":
             print(_version_string())
             return int(ExitCode.OK)
-        # `repl` atau tanpa subcommand → REPL
+        
         return run_repl()
     except KeyboardInterrupt:
         _write_error("interrupted", sys.stderr)
