@@ -1,6 +1,0 @@
-let name = "ZEN"
-let first = 20
-let second = 22
-let result = first + second
-
-result

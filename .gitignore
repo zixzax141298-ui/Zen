@@ -19,6 +19,8 @@ htmlcov/
 
 # Python package build metadata
 *.egg-info/
+dist/
+build/
 
 # Environment and secrets
 .env
@@ -29,14 +31,11 @@ htmlcov/
 secrets/
 credentials/
 
-# Python generated files
-__pycache__/
-*.py[cod]
-*.egg-info/
-.pytest_cache/
-.coverage
-htmlcov/
+# Zen temporary files & playground
+*.zen
+!tests/fixtures/*.zen
 
-# Build artifacts
-build/
-dist/
+# Backup and temp files
+*.backup-*
+*.bak
+APPLY.txt
