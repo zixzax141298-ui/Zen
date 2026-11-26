@@ -15,6 +15,11 @@ from pathlib import Path
 from typing import Any, TextIO
 
 from zen.cli_core import CLIContext, Command, CommandRegistry, ExitCode, dispatch
+from zen.cli_core.diagnostics import (
+    diagnostic_from_exception,
+    diagnostics_payload,
+    format_diagnostic,
+)
 
 from zen import (
     Interpreter,
@@ -89,17 +94,81 @@ def _read_source(path: Path, error: TextIO) -> str:
         )
     return source
 
-def _validate_program(source: str):
-    program = parse(source)
-    validation = validate_ast(program)
+class _CLIDiagnosticError(Exception):
+    """Internal CLI-only container for normalized frontend diagnostics."""
 
+    def __init__(self, diagnostics, message=None):
+        self.diagnostics = tuple(diagnostics)
+        if message is None:
+            message = (
+                self.diagnostics[0].message
+                if self.diagnostics
+                else "validation failed"
+            )
+        super().__init__(message)
+
+
+def _write_cli_diagnostics(
+    path: str,
+    exc: BaseException,
+    error: TextIO,
+) -> None:
+    """Write normalized frontend diagnostics to the CLI error stream."""
+    if isinstance(exc, _CLIDiagnosticError):
+        diagnostics = exc.diagnostics
+    else:
+        diagnostics = (diagnostic_from_exception(exc),)
+
+    if not diagnostics:
+        _write_error(str(exc), error)
+        return
+
+    for diagnostic in diagnostics:
+        print(format_diagnostic(path, diagnostic), file=error)
+
+
+def _write_repl_exception(exc: BaseException, output: TextIO) -> None:
+    if isinstance(exc, _CLIDiagnosticError):
+        for diagnostic in exc.diagnostics:
+            print(format_diagnostic("<repl>", diagnostic), file=output)
+        if not exc.diagnostics:
+            _write_error(str(exc), output)
+        return
+
+    if isinstance(exc, (LexerError, ParseError, SemanticError, ValueError)):
+        _write_cli_diagnostics("<repl>", exc, output)
+        return
+
+    _write_error(str(exc), output)
+
+
+def _validate_program(source: str):
+    try:
+        program = parse(source)
+    except (LexerError, ParseError) as exc:
+        raise _CLIDiagnosticError(
+            (diagnostic_from_exception(exc),),
+            message=str(exc),
+        ) from exc
+
+    validation = validate_ast(program)
     if not validation.is_valid:
         messages = "; ".join(
             diagnostic.message for diagnostic in validation.diagnostics
         )
-        raise ValueError(f"Invalid AST: {messages}")
+        raise _CLIDiagnosticError(
+            validation.diagnostics,
+            message=f"Invalid AST: {messages}",
+        )
 
-    SemanticAnalyzer().analyze_strict(program)
+    try:
+        SemanticAnalyzer().analyze_strict(program)
+    except SemanticError as exc:
+        raise _CLIDiagnosticError(
+            (diagnostic_from_exception(exc),),
+            message=str(exc),
+        ) from exc
+
     return program
 
 @contextmanager
@@ -169,17 +238,43 @@ def run_file(
     t0 = time.perf_counter()
     try:
         program = _validate_program(source)
-    except (LexerError, ParseError, SemanticError, ValueError) as exc:
+    except _CLIDiagnosticError as exc:
         if json_output:
-            print(json.dumps({"file": str(path), "status": "error", "phase": "validate", "message": str(exc)}), file=output)
+            payload = {
+                "schema_version": 1,
+                "file": str(path),
+                "status": "error",
+                "phase": "validate",
+                "message": str(exc),
+                "diagnostics": diagnostics_payload(exc.diagnostics),
+            }
+            print(json.dumps(payload), file=output)
         else:
-            _write_error(str(exc), error)
+            for diagnostic in exc.diagnostics:
+                print(format_diagnostic(str(path), diagnostic), file=error)
+            if not exc.diagnostics:
+                _write_error(str(exc), error)
+        return int(ExitCode.SOURCE_ERROR)
+    except (LexerError, ParseError, SemanticError, ValueError) as exc:
+        diagnostic = diagnostic_from_exception(exc)
+        if json_output:
+            payload = {
+                "schema_version": 1,
+                "file": str(path),
+                "status": "error",
+                "phase": "validate",
+                "message": str(exc),
+                "diagnostics": diagnostics_payload((diagnostic,)),
+            }
+            print(json.dumps(payload), file=output)
+        else:
+            print(format_diagnostic(str(path), diagnostic), file=error)
         return int(ExitCode.SOURCE_ERROR)
     t1 = time.perf_counter()
 
     if check_only:
         if json_output:
-            print(json.dumps({"file": str(path), "status": "ok", "phase": "validate"}), file=output)
+            print(json.dumps({"schema_version": 1, "file": str(path), "status": "ok", "phase": "validate", "diagnostics": []}), file=output)
         else:
             print(f"{Color.GREEN}✓ {path}: valid{Color.RESET}", file=output)
         if show_stats and not json_output:
@@ -195,7 +290,16 @@ def run_file(
         return int(ExitCode.TIMEOUT)
     except ZenRuntimeError as exc:
         if json_output:
-            print(json.dumps({"file": str(path), "status": "error", "phase": "runtime", "message": str(exc)}), file=output)
+            diagnostic = diagnostic_from_exception(exc)
+            payload = {
+                "schema_version": 1,
+                "file": str(path),
+                "status": "error",
+                "phase": "runtime",
+                "message": str(exc),
+                "diagnostics": diagnostics_payload((diagnostic,)),
+            }
+            print(json.dumps(payload), file=output)
         else:
             _write_error(str(exc), error)
         return int(ExitCode.SOURCE_ERROR)
@@ -203,9 +307,11 @@ def run_file(
 
     if json_output:
         payload: dict[str, Any] = {
+            "schema_version": 1,
             "file": str(path),
             "status": "ok",
             "result": result if isinstance(result, (str, int, float, bool)) or result is None else repr(result),
+            "diagnostics": [],
         }
         if show_stats:
             payload["stats"] = {
@@ -235,8 +341,8 @@ def dump_ast(path: Path, *, output: TextIO | None = None, error: TextIO | None =
 
     try:
         program = _validate_program(source)
-    except (LexerError, ParseError, SemanticError, ValueError) as exc:
-        _write_error(str(exc), error)
+    except (_CLIDiagnosticError, LexerError, ParseError, SemanticError, ValueError) as exc:
+        _write_cli_diagnostics(str(path), exc, error)
         return int(ExitCode.SOURCE_ERROR)
 
     print(json.dumps(_serialize_ast(program), indent=2), file=output)
@@ -256,7 +362,7 @@ def dump_tokens(path: Path, *, output: TextIO | None = None, error: TextIO | Non
     try:
         tokens = Lexer(source).tokenize()
     except LexerError as exc:
-        _write_error(str(exc), error)
+        _write_cli_diagnostics(str(path), exc, error)
         return int(ExitCode.SOURCE_ERROR)
 
     for index, token in enumerate(tokens):
@@ -284,8 +390,8 @@ def fingerprint_file(path: Path, *, output: TextIO | None = None, error: TextIO 
 
     try:
         program = _validate_program(source)
-    except (LexerError, ParseError, SemanticError, ValueError) as exc:
-        _write_error(str(exc), error)
+    except (_CLIDiagnosticError, LexerError, ParseError, SemanticError, ValueError) as exc:
+        _write_cli_diagnostics(str(path), exc, error)
         return int(ExitCode.SOURCE_ERROR)
 
     fp = generate_fingerprint(program)
@@ -303,8 +409,8 @@ def format_source(path: Path, *, output: TextIO | None = None, error: TextIO | N
     except _CliError as exc:
         _write_error(str(exc), error)
         return int(exc.code)
-    except (LexerError, ParseError, SemanticError, ValueError) as exc:
-        _write_error(str(exc), error)
+    except (_CLIDiagnosticError, LexerError, ParseError, SemanticError, ValueError) as exc:
+        _write_cli_diagnostics(str(path), exc, error)
         return int(ExitCode.SOURCE_ERROR)
 
     print(source.strip(), file=output)
@@ -465,8 +571,8 @@ def run_repl(*, input_fn: Callable[[str], str] | None = None, output: TextIO | N
                 continue
             try:
                 program = _validate_program(repl.source)
-            except (LexerError, ParseError, SemanticError, ValueError) as exc:
-                print(f"zen: {exc}", file=output)
+            except (_CLIDiagnosticError, LexerError, ParseError, SemanticError, ValueError) as exc:
+                _write_repl_exception(exc, output)
                 continue
             print(f"AST: {len(program.statements)} statement(s)", file=output)
             continue
@@ -480,8 +586,8 @@ def run_repl(*, input_fn: Callable[[str], str] | None = None, output: TextIO | N
                 continue
             try:
                 result = repl.execute_submission(file_source)
-            except (LexerError, ParseError, SemanticError, ZenRuntimeError, ValueError) as exc:
-                print(f"zen: {exc}", file=output)
+            except (_CLIDiagnosticError, LexerError, ParseError, SemanticError, ZenRuntimeError, ValueError) as exc:
+                _write_repl_exception(exc, output)
                 continue
             if result is not None:
                 print(_format_result(result), file=output)
@@ -508,8 +614,8 @@ def run_repl(*, input_fn: Callable[[str], str] | None = None, output: TextIO | N
 
         try:
             result = repl.execute_submission(pending)
-        except (LexerError, ParseError, SemanticError, ZenRuntimeError, ValueError) as exc:
-            _write_error(str(exc), output)
+        except (_CLIDiagnosticError, LexerError, ParseError, SemanticError, ZenRuntimeError, ValueError) as exc:
+            _write_repl_exception(exc, output)
             pending = ""
             continue
 
