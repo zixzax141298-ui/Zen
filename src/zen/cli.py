@@ -14,6 +14,8 @@ from importlib.metadata import PackageNotFoundError, version
 from pathlib import Path
 from typing import Any, TextIO
 
+from zen.cli_core import CLIContext, Command, CommandRegistry, ExitCode, dispatch
+
 from zen import (
     Interpreter,
     Lexer,
@@ -48,14 +50,6 @@ class Color:
 # ---------------------------------------------------------------------------
 # Exit Codes
 # ---------------------------------------------------------------------------
-class ExitCode(IntEnum):
-    OK = 0
-    SOURCE_ERROR = 1        
-    IO_ERROR = 1            
-    USAGE_ERROR = 2         
-    TIMEOUT = 124           
-    INTERRUPTED = 130       
-
 class _ExecutionTimeout(Exception):
     pass
 
@@ -161,8 +155,10 @@ def run_file(
     show_stats: bool = False,
     timeout: float | None = None,
 ) -> int:
-    output = output or sys.stdout
-    error = error or sys.stderr
+    if output is None:
+        output = sys.stdout
+    if error is None:
+        error = sys.stderr
 
     try:
         source = _read_source(path, error)
@@ -227,8 +223,10 @@ def run_file(
     return int(ExitCode.OK)
 
 def dump_ast(path: Path, *, output: TextIO | None = None, error: TextIO | None = None) -> int:
-    output = output or sys.stdout
-    error = error or sys.stderr
+    if output is None:
+        output = sys.stdout
+    if error is None:
+        error = sys.stderr
     try:
         source = _read_source(path, error)
     except _CliError as exc:
@@ -245,8 +243,10 @@ def dump_ast(path: Path, *, output: TextIO | None = None, error: TextIO | None =
     return int(ExitCode.OK)
 
 def dump_tokens(path: Path, *, output: TextIO | None = None, error: TextIO | None = None) -> int:
-    output = output or sys.stdout
-    error = error or sys.stderr
+    if output is None:
+        output = sys.stdout
+    if error is None:
+        error = sys.stderr
     try:
         source = _read_source(path, error)
     except _CliError as exc:
@@ -272,8 +272,10 @@ def dump_tokens(path: Path, *, output: TextIO | None = None, error: TextIO | Non
     return int(ExitCode.OK)
 
 def fingerprint_file(path: Path, *, output: TextIO | None = None, error: TextIO | None = None) -> int:
-    output = output or sys.stdout
-    error = error or sys.stderr
+    if output is None:
+        output = sys.stdout
+    if error is None:
+        error = sys.stderr
     try:
         source = _read_source(path, error)
     except _CliError as exc:
@@ -291,8 +293,10 @@ def fingerprint_file(path: Path, *, output: TextIO | None = None, error: TextIO 
     return int(ExitCode.OK)
 
 def format_source(path: Path, *, output: TextIO | None = None, error: TextIO | None = None) -> int:
-    output = output or sys.stdout
-    error = error or sys.stderr
+    if output is None:
+        output = sys.stdout
+    if error is None:
+        error = sys.stderr
     try:
         source = _read_source(path, error)
         _validate_program(source)
@@ -307,7 +311,8 @@ def format_source(path: Path, *, output: TextIO | None = None, error: TextIO | N
     return int(ExitCode.OK)
 
 def print_docs(output: TextIO | None = None) -> int:
-    output = output or sys.stdout
+    if output is None:
+        output = sys.stdout
     print(f"{Color.BOLD}Zen Language Quick Reference{Color.RESET}", file=output)
     print("============================\n", file=output)
     print("Variables:", file=output)
@@ -561,8 +566,51 @@ def _argument_parser() -> argparse.ArgumentParser:
     commands.add_parser("env", help="print environment and system information")
     commands.add_parser("version", help="print the Zen version")
     commands.add_parser("repl", help="start the interactive shell")
+    commands.add_parser("doctor", help="inspect basic ZEN CLI and Python environment details")
+    commands.add_parser("info", help="print ZEN and host environment information")
 
     return parser
+
+def _build_command_registry() -> CommandRegistry:
+    """Build the command table using explicitly injected CLI operations."""
+    from zen.cli_commands import CLIOperations, register_commands
+
+    operations = CLIOperations(
+        run_file=run_file,
+        dump_ast=dump_ast,
+        dump_tokens=dump_tokens,
+        fingerprint_file=fingerprint_file,
+        format_source=format_source,
+        print_docs=print_docs,
+        run_repl=run_repl,
+        print_environment=_print_environment,
+        print_version=_print_version,
+        print_doctor=_print_doctor,
+    )
+    return register_commands(CommandRegistry(), operations)
+
+def _print_environment(output: TextIO) -> int:
+    print(f"Zen Version: {_version_string()}", file=output)
+    print(f"Python:      {platform.python_version()} ({platform.python_implementation()})", file=output)
+    print(f"OS:          {platform.system()} {platform.release()}", file=output)
+    return int(ExitCode.OK)
+
+
+def _print_version(output: TextIO) -> int:
+    print(_version_string(), file=output)
+    return int(ExitCode.OK)
+
+
+def _print_doctor(output: TextIO) -> int:
+    """Report basic host/package facts; this is not a sandbox security audit."""
+    print("ZEN CLI diagnostics", file=output)
+    print(f"Version:      {_version_string()}", file=output)
+    print(f"Python:       {platform.python_version()} ({platform.python_implementation()})", file=output)
+    print(f"Platform:     {platform.system()} {platform.release()}", file=output)
+    print(f"Source limit: {MAX_SOURCE_CHARS} characters", file=output)
+    print("Status:       basic environment inspection completed", file=output)
+    return int(ExitCode.OK)
+
 
 # ---------------------------------------------------------------------------
 # Entry Point
@@ -573,41 +621,30 @@ def main(argv: Sequence[str] | None = None) -> int:
     # Biarkan SystemExit dari argparse berjalan natural
     args = parser.parse_args(argv)
 
-    if getattr(args, "no_color", False):
-        Color.disable()
+    color_names = ("RED", "GREEN", "YELLOW", "BLUE", "CYAN", "RESET", "BOLD")
+    previous_colors = {name: getattr(Color, name) for name in color_names}
 
     try:
-        if args.command == "run":
-            return run_file(
-                args.file, check_only=args.check, json_output=args.json,
-                show_stats=args.stats, timeout=args.timeout
-            )
-        elif args.command == "check":
-            return run_file(args.file, check_only=True, json_output=args.json)
-        elif args.command == "ast":
-            return dump_ast(args.file)
-        elif args.command == "fp":
-            return fingerprint_file(args.file)
-        elif args.command == "tokens":
-            return dump_tokens(args.file)
-        elif args.command in ("format", "fmt"):
-            return format_source(args.file)
-        elif args.command == "docs":
-            return print_docs()
-        elif args.command == "env":
-            print(f"Zen Version: {_version_string()}")
-            print(f"Python:      {platform.python_version()} ({platform.python_implementation()})")
-            print(f"OS:          {platform.system()} {platform.release()}")
-            return int(ExitCode.OK)
-        elif args.command == "version":
-            print(_version_string())
-            return int(ExitCode.OK)
-        
-        return run_repl()
-        
+        if getattr(args, "no_color", False):
+            Color.disable()
+
+        context = CLIContext(stdout=sys.stdout, stderr=sys.stderr)
+        return dispatch(
+            _build_command_registry(),
+            context,
+            args.command,
+            args,
+            default=lambda ctx, _args: run_repl(output=ctx.stdout),
+            unknown_exit_code=int(ExitCode.USAGE_ERROR),
+        )
+
     except KeyboardInterrupt:
         _write_error("interrupted", sys.stderr)
         return int(ExitCode.INTERRUPTED)
+
+    finally:
+        for name, value in previous_colors.items():
+            setattr(Color, name, value)
 
 if __name__ == "__main__":
     sys.exit(main())

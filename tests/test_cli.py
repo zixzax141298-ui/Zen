@@ -324,3 +324,27 @@ def test_cli_fp_detects_semantic_changes(tmp_path: Path, capsys):
     fp2 = capsys.readouterr().out.strip()
     
     assert fp1 != fp2
+
+
+@pytest.mark.parametrize("command", ["env", "info"])
+def test_cli_environment_commands(command, capsys):
+    assert main([command]) == 0
+
+    captured = capsys.readouterr()
+    assert "Zen Version:" in captured.out
+    assert "Python:" in captured.out
+    assert "OS:" in captured.out
+    assert captured.err == ""
+
+
+def test_cli_doctor_reports_basic_diagnostics(capsys):
+    assert main(["doctor"]) == 0
+
+    captured = capsys.readouterr()
+    assert "ZEN CLI diagnostics" in captured.out
+    assert "Version:" in captured.out
+    assert "Python:" in captured.out
+    assert "Platform:" in captured.out
+    assert "Source limit:" in captured.out
+    assert "basic environment inspection completed" in captured.out
+    assert captured.err == ""
