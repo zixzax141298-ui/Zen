@@ -1,6 +1,6 @@
 from zen.cli_core import CommandRegistry
 
-from . import docs, environment, format, inspect, repl, run
+from . import completion, docs, environment, format, inspect, repl, run
 from .operations import CLIOperations
 
 
@@ -15,6 +15,7 @@ def register_commands(
     docs.register(registry, operations)
     environment.register(registry, operations)
     repl.register(registry, operations)
+    completion.register(registry, operations)
     return registry
 
 
