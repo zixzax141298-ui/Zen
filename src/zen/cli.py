@@ -15,6 +15,7 @@ from pathlib import Path
 from typing import Any, TextIO
 
 from zen.cli_core import CLIContext, Command, CommandRegistry, ExitCode, dispatch
+from zen.cli_core.completion import render_completion
 from zen.cli_core.diagnostics import (
     diagnostic_from_exception,
     diagnostics_payload,
@@ -674,6 +675,8 @@ def _argument_parser() -> argparse.ArgumentParser:
     commands.add_parser("repl", help="start the interactive shell")
     commands.add_parser("doctor", help="inspect basic ZEN CLI and Python environment details")
     commands.add_parser("info", help="print ZEN and host environment information")
+    completion_p = commands.add_parser("completion", help="generate a shell completion script")
+    completion_p.add_argument("shell", choices=("bash", "zsh"), help="target shell")
 
     return parser
 
@@ -692,8 +695,21 @@ def _build_command_registry() -> CommandRegistry:
         print_environment=_print_environment,
         print_version=_print_version,
         print_doctor=_print_doctor,
+        generate_completion=_generate_completion,
     )
     return register_commands(CommandRegistry(), operations)
+
+def _generate_completion(shell: str, *, output: TextIO, error: TextIO) -> int:
+    # Generate from the same argparse parser used by the CLI.
+    try:
+        script = render_completion(shell, _argument_parser())
+        output.write(script)
+        output.flush()
+    except OSError as exc:
+        _write_error(f"cannot write completion output: {exc}", error)
+        return int(ExitCode.IO_ERROR)
+    return int(ExitCode.OK)
+
 
 def _print_environment(output: TextIO) -> int:
     print(f"Zen Version: {_version_string()}", file=output)

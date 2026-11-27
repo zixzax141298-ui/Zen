@@ -18,3 +18,4 @@ class CLIOperations:
     print_environment: Callable[..., int]
     print_version: Callable[..., int]
     print_doctor: Callable[..., int]
+    generate_completion: Callable[..., int]
