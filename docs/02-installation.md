@@ -58,14 +58,15 @@ python -m pytest -q
 The test suite imports `pytest`, so `unittest discover` alone does not run
 every module.
 
-## Current limitations
+## Implementation status and limitations
 
 - The lexer, parser, AST validation, semantic analysis, and tree-walk
   interpreter are implemented (see README project status).
 - The public API is documented in `docs/engineering/ZSS_PUBLIC_API_CONTRACT.md`.
 - Zen is an engineering prototype and is not production-ready.
-- There is no command-line runner yet; programs are run through the Python
-  API, for example `from zen import execute`.
+- The CLI supports running Zen programs and interactive REPL sessions.
+- Bash and Zsh shell completion can be generated, installed, and uninstalled
+  using `zen completion`.
 
 ## Packaging notes
 

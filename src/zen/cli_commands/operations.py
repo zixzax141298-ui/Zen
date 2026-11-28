@@ -19,3 +19,5 @@ class CLIOperations:
     print_version: Callable[..., int]
     print_doctor: Callable[..., int]
     generate_completion: Callable[..., int]
+    install_completion: Callable[..., int]
+    uninstall_completion: Callable[..., int]
