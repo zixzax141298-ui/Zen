@@ -33,6 +33,56 @@ ZEN development prioritizes:
 
 A fast implementation is not acceptable if it hides defects, weakens contracts, or transfers unresolved risk to another component.
 
+### Decision Principles
+
+Engineering decisions must apply the following principles:
+
+1. **Evidence Before Claims:** conclusions must be traceable to
+   observations, measurements, or clearly stated reasoning.
+2. **Correctness Before Convenience:** do not trade correctness,
+   safety, or contract integrity for superficial convenience.
+3. **Purpose Before Features:** every feature must address an identified
+   problem and state its intended outcome and success criteria.
+4. **Architecture Before Implementation:** understand component
+   ownership, interfaces, invariants, and dependencies before coding.
+5. **Security and Integrity by Design:** account for trust boundaries,
+   resource exhaustion, failure behavior, and data integrity from design.
+6. **Owner Approval Before Consequential Changes:** recommendations,
+   analysis, and verification do not grant change or integration authority.
+7. **Innovation Claims Require Evidence:** claims of novelty or
+   superiority require a problem statement, baseline comparison,
+   alternatives, measurable advantages, trade-offs, and limitations.
+
+### Self-Evolving Rule Governance
+
+ZEN rules are subject to evidence-based evaluation. Reviews may be
+triggered by new evidence, defects, conflicts, changed requirements,
+architectural evolution, or periodic examination.
+
+A rule evaluation examines its purpose, scope, authority, normative
+status, effectiveness, limitations, failure modes, dependencies,
+consistency, and compatibility impact.
+
+An evaluation record identifies the rule and its purpose, scope,
+authority, supporting evidence, limitations, affected dependencies,
+compatibility impact, and recommendation.
+
+Recommendations may include retaining, clarifying, revising,
+deprecating, or retiring a rule. These recommendations do not create
+a universal rule lifecycle and do not automatically change a rule's
+normative or active status.
+
+Evaluation authority is separate from change and approval authority.
+No evaluator may modify, approve, activate, or retire a rule solely
+because an evaluation recommends doing so. Actual changes follow the
+applicable governance process and require the appropriate explicit
+Owner approval.
+
+Syntax and grammar rules remain governed by the Owner-approved
+ZSS-02 specification, including its rule identity, revision,
+lifecycle, immutable Grammar Version, compatibility, and approval
+requirements. This general principle does not replace or override ZSS-02.
+
 ## 4. Maturity and Evolution
 
 ZEN pursues demonstrable maturity, not endless perfection.

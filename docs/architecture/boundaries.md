@@ -28,3 +28,38 @@ It does not imply that components marked as future work are implemented.
 Source spans are half-open: start is inclusive and end is exclusive. A child
 must be contained by its parent. Siblings are ordered and non-overlapping;
 `previous.end == next.start` is valid adjacency.
+
+## Architecture decision principles
+
+Architecture decisions must be grounded in an identified problem and
+an explicit purpose. A proposed feature or component must have an
+intended outcome and observable criteria by which its result can be
+evaluated.
+
+Before implementation, identify:
+
+- The component responsible for the behavior.
+- The component boundaries and interfaces involved.
+- The invariants and contracts that must remain true.
+- Relevant alternatives and their trade-offs.
+- Security, resource, failure, and compatibility implications.
+- Evidence required to verify the intended behavior.
+
+Correctness and contract integrity take precedence over convenience.
+A component must not absorb another component's responsibility merely
+to simplify implementation or hide a defect.
+
+Architecture claims must distinguish implemented behavior from
+proposals and unverified designs. A documented future component or
+transformation is not evidence that it has been implemented.
+
+## Governance boundary
+
+Architecture evaluation may identify weaknesses, inconsistencies,
+and opportunities for improvement. It may produce evidence-based
+recommendations, but it does not independently authorize architecture
+changes or implementation.
+
+Changes to component ownership, protected interfaces, invariants, or
+trust boundaries follow the applicable Owner approval and change-control
+requirements.
