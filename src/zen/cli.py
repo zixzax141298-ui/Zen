@@ -16,6 +16,11 @@ from typing import Any, TextIO
 
 from zen.cli_core import CLIContext, Command, CommandRegistry, ExitCode, dispatch
 from zen.cli_core.completion import render_completion
+from zen.cli_core.completion_install import (
+    CompletionInstallError,
+    install_completion as install_shell_completion,
+    uninstall_completion as uninstall_shell_completion,
+)
 from zen.cli_core.diagnostics import (
     diagnostic_from_exception,
     diagnostics_payload,
@@ -675,8 +680,19 @@ def _argument_parser() -> argparse.ArgumentParser:
     commands.add_parser("repl", help="start the interactive shell")
     commands.add_parser("doctor", help="inspect basic ZEN CLI and Python environment details")
     commands.add_parser("info", help="print ZEN and host environment information")
-    completion_p = commands.add_parser("completion", help="generate a shell completion script")
+    completion_p = commands.add_parser("completion", help="generate or manage shell completion")
     completion_p.add_argument("shell", choices=("bash", "zsh"), help="target shell")
+    completion_action = completion_p.add_mutually_exclusive_group()
+    completion_action.add_argument(
+        "--install",
+        action="store_true",
+        help="install shell completion for the current user",
+    )
+    completion_action.add_argument(
+        "--uninstall",
+        action="store_true",
+        help="remove ZEN-managed shell completion",
+    )
 
     return parser
 
@@ -696,6 +712,8 @@ def _build_command_registry() -> CommandRegistry:
         print_version=_print_version,
         print_doctor=_print_doctor,
         generate_completion=_generate_completion,
+        install_completion=_install_completion,
+        uninstall_completion=_uninstall_completion,
     )
     return register_commands(CommandRegistry(), operations)
 
@@ -707,6 +725,29 @@ def _generate_completion(shell: str, *, output: TextIO, error: TextIO) -> int:
         output.flush()
     except OSError as exc:
         _write_error(f"cannot write completion output: {exc}", error)
+        return int(ExitCode.IO_ERROR)
+    return int(ExitCode.OK)
+
+
+def _install_completion(shell: str, *, output: TextIO, error: TextIO) -> int:
+    try:
+        script = render_completion(shell, _argument_parser())
+        install_shell_completion(shell, script)
+        print(f"ZEN {shell} completion installed.", file=output)
+        output.flush()
+    except (CompletionInstallError, OSError) as exc:
+        _write_error(f"cannot install {shell} completion: {exc}", error)
+        return int(ExitCode.IO_ERROR)
+    return int(ExitCode.OK)
+
+
+def _uninstall_completion(shell: str, *, output: TextIO, error: TextIO) -> int:
+    try:
+        uninstall_shell_completion(shell)
+        print(f"ZEN {shell} completion uninstalled.", file=output)
+        output.flush()
+    except (CompletionInstallError, OSError) as exc:
+        _write_error(f"cannot uninstall {shell} completion: {exc}", error)
         return int(ExitCode.IO_ERROR)
     return int(ExitCode.OK)
 
